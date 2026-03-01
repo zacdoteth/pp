@@ -414,7 +414,7 @@ function HomeScreen({ onPlay, onLeaderboard }) {
 // THE PENIS GAME — the core. preserved. + audio recording + chart + speech
 // ═══════════════════════════════════════════════════════════════
 function PenisGame({ onGameEnd, autoStart }) {
-  const [gameState, setGameState] = useState("idle");
+  const [gameState, setGameState] = useState(autoStart ? "countdown" : "idle");
   const [duration, setDuration] = useState(0);
   const [dbLevel, setDbLevel] = useState(-60);
   const [peakDb, setPeakDb] = useState(-60);
@@ -440,9 +440,9 @@ function PenisGame({ onGameEnd, autoStart }) {
   const [chartData, setChartData] = useState([]);
   const [wordDetected, setWordDetected] = useState(false);
   const [wordCount, setWordCount] = useState(0);
-  const [countdown, setCountdown] = useState(null); // 3, 2, 1, "GO"
+  const [countdown, setCountdown] = useState(autoStart ? 3 : null);
 
-  const gameStateRef = useRef("idle");
+  const gameStateRef = useRef(autoStart ? "countdown" : "idle");
   const startTimeRef = useRef(0);
   const scoreRef = useRef(0);
   const peakDbRef = useRef(-60);
@@ -626,7 +626,7 @@ function PenisGame({ onGameEnd, autoStart }) {
   }, [loop]);
 
   const startGame = useCallback(async () => {
-    if (gameStateRef.current === "listening" || gameStateRef.current === "countdown" || gameStateRef.current === "mic-prompt") return;
+    if (gameStateRef.current === "listening" || gameStateRef.current === "mic-prompt") return;
     if (!micReady) {
       gameStateRef.current = "mic-prompt"; setGameState("mic-prompt");
       const ok = await initMic();
@@ -640,13 +640,16 @@ function PenisGame({ onGameEnd, autoStart }) {
     // ─── COUNTDOWN ───
     gameStateRef.current = "countdown"; setGameState("countdown");
     setCountdown(3);
-    await new Promise(r => setTimeout(r, 700));
+    await new Promise(r => setTimeout(r, 900));
+    if (gameStateRef.current !== "countdown") return;
     setCountdown(2);
-    await new Promise(r => setTimeout(r, 700));
+    await new Promise(r => setTimeout(r, 900));
+    if (gameStateRef.current !== "countdown") return;
     setCountdown(1);
-    await new Promise(r => setTimeout(r, 700));
+    await new Promise(r => setTimeout(r, 900));
+    if (gameStateRef.current !== "countdown") return;
     setCountdown("SAY PENIS");
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 700));
 
     if (gameStateRef.current !== "countdown") return; // user navigated away
     launchGame();
@@ -655,11 +658,11 @@ function PenisGame({ onGameEnd, autoStart }) {
   // ─── AUTO-START on mount ───
   const autoStarted = useRef(false);
   useEffect(() => {
-    if (autoStart && !autoStarted.current && gameState === "idle") {
+    if (autoStart && !autoStarted.current) {
       autoStarted.current = true;
       startGame();
     }
-  }, [autoStart, gameState, startGame]);
+  }, [autoStart, startGame]);
 
   const endGame = useCallback(() => {
     gameStateRef.current = "result"; setGameState("result");
@@ -1674,7 +1677,7 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
           border: "none", padding: "11px 36px", borderRadius: 8, cursor: "pointer",
           boxShadow: "0 4px 20px #e0202044", letterSpacing: 1, marginBottom: 10,
           width: "100%",
-        }}>say it again</button>
+        }}>try again</button>
         {supabase && <button onClick={onLeaderboard} style={{
           fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 400,
           letterSpacing: 2, color: "#555", background: "#0e1018",
@@ -1775,11 +1778,11 @@ function LeaderboardScreen({ onPlay, onHome }) {
             fontFamily: "'Cormorant Garamond', serif",
             fontSize: 36, fontWeight: 300, fontStyle: "italic",
             color: "#f0ece8", letterSpacing: 3, margin: 0, marginBottom: 4,
-          }}>hall of shame</h1>
+          }}>hall of fame</h1>
           <div style={{
             fontFamily: "'JetBrains Mono'", fontSize: 8,
             fontWeight: 300, letterSpacing: 3, color: "#333",
-          }}>LOUDEST SCREAMS — RANKED BY SCORE</div>
+          }}>TOP SCREAMERS — RANKED BY SCORE</div>
         </div>
 
         {/* Entries */}
@@ -1823,7 +1826,7 @@ function LeaderboardScreen({ onPlay, onHome }) {
             fontStyle: "italic", color: "#f0ece8", background: "#e02020",
             border: "none", padding: "11px 36px", borderRadius: 8, cursor: "pointer",
             boxShadow: "0 4px 20px #e0202044", letterSpacing: 1, width: "100%",
-          }}>say it</button>
+          }}>play again</button>
           <div style={{ textAlign: "center" }}>
             <button onClick={onHome} style={{
               fontFamily: "'Cormorant Garamond'", fontSize: 13, fontStyle: "italic",
@@ -1844,52 +1847,91 @@ function LeaderboardScreen({ onPlay, onHome }) {
   );
 }
 
+function MiniSparkline({ data, width = 60, height = 28 }) {
+  const scaled = scaleChart(data);
+  if (!scaled || scaled.length < 2) return null;
+
+  const pad = 1;
+  const w = width - pad * 2;
+  const h = height - pad * 2;
+  const step = w / (scaled.length - 1);
+  const points = scaled.map((v, i) => `${pad + i * step},${pad + h - v * h}`);
+  const polyline = points.join(" ");
+  const fillPoints = `${pad},${pad + h} ${polyline} ${pad + (scaled.length - 1) * step},${pad + h}`;
+  const gradId = `sg${Math.random().toString(36).slice(2, 6)}`;
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0, display: "block" }}>
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#e02020" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#e02020" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={fillPoints} fill={`url(#${gradId})`} />
+      <polyline points={polyline} fill="none" stroke="#e02020" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function LeaderboardEntry({ entry, position, isPlaying, onTogglePlay }) {
   const peakDisp = entry.peak_db != null ? Math.max(0, 60 + entry.peak_db).toFixed(0) : "—";
-  const posColor = position === 1 ? "#ffcc33" : position === 2 ? "#c0c0c0" : position === 3 ? "#cd7f32" : "#333";
+  const posColor = position === 1 ? "#ffcc33" : position === 2 ? "#c0c0c0" : position === 3 ? "#cd7f32" : "#444";
 
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 10,
+      display: "flex", alignItems: "center", gap: 8,
       padding: "10px 12px", background: "#0b0b10",
       borderRadius: 6, border: "1px solid #111118",
     }}>
       {/* Position */}
       <div style={{
-        fontFamily: "'JetBrains Mono'", fontSize: 12, fontWeight: 300,
+        fontFamily: "'JetBrains Mono'", fontSize: 13, fontWeight: 500,
         color: posColor, width: 28, textAlign: "center", flexShrink: 0,
       }}>#{position}</div>
 
       {/* Play button */}
       <button onClick={onTogglePlay} disabled={!entry.audio_url} style={{
-        width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+        width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
         background: isPlaying ? "#e02020" : entry.audio_url ? "#1a1c28" : "#0e0e14",
         border: `1px solid ${isPlaying ? "#e02020" : entry.audio_url ? "#22242e" : "#14141c"}`,
         color: entry.audio_url ? "#f0ece8" : "#222",
         cursor: entry.audio_url ? "pointer" : "default",
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11,
         boxShadow: isPlaying ? "0 0 10px #e0202033" : "none",
       }}>
         {isPlaying ? "⏸" : "▶"}
       </button>
 
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
-          <span style={{
-            fontFamily: "'DM Sans'", fontSize: 13, fontWeight: 500,
-            color: "#e8e4e0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>{entry.player_name || "anonymous"}</span>
-          <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#555", flexShrink: 0 }}>
-            {entry.rank_emoji} {entry.rank_title}
-          </span>
-        </div>
-        <div style={{ display: "flex", gap: 10, fontFamily: "'JetBrains Mono'", fontSize: 8, color: "#333" }}>
-          <span><span style={{ color: "#e02020" }}>{entry.score?.toLocaleString()}</span> pts</span>
-          <span>{peakDisp} dB</span>
-          <span>{entry.duration != null ? `${entry.duration.toFixed(1)}s` : "—"}</span>
-        </div>
+      {/* Name + rank */}
+      <div style={{ minWidth: 0, flex: "1 1 0" }}>
+        <div style={{
+          fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 500,
+          color: "#f0ece8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          lineHeight: 1.2,
+        }}>{entry.player_name || "anonymous"}</div>
+        <div style={{
+          fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#555",
+          marginTop: 2, lineHeight: 1,
+        }}>{entry.rank_emoji} {entry.rank_title}</div>
       </div>
+
+      {/* Score + secondary stats */}
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div style={{
+          fontFamily: "'JetBrains Mono'", fontSize: 16, fontWeight: 600,
+          color: "#e02020", lineHeight: 1.2,
+        }}>{entry.score?.toLocaleString()}<span style={{ fontSize: 9, fontWeight: 400, color: "#555", marginLeft: 2 }}>pts</span></div>
+        <div style={{
+          fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#444",
+          marginTop: 2, lineHeight: 1,
+        }}>{peakDisp}dB · {entry.duration != null ? `${entry.duration.toFixed(1)}s` : "—"}</div>
+      </div>
+
+      {/* Sparkline */}
+      {entry.chart_data && entry.chart_data.length >= 2 && (
+        <MiniSparkline data={entry.chart_data} width={60} height={28} />
+      )}
     </div>
   );
 }
