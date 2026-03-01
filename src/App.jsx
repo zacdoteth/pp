@@ -1,9 +1,46 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createClient } from "@supabase/supabase-js";
 
 // ═══════════════════════════════════════════════════════════════
 // THE PENIS GAME — play.fun edition
 // say it loud. get points. go viral.
 // ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+// SUPABASE — leaderboard + audio storage
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== "your-supabase-url-here"
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+async function uploadScream({ score, peakDb, rank, duration, chartData, audioBlob, playerName }) {
+  if (!supabase) return null;
+  let audioUrl = null;
+  if (audioBlob) {
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webm`;
+    const { data: uploadData, error: uploadErr } = await supabase.storage
+      .from("screams")
+      .upload(filename, audioBlob, { contentType: "audio/webm", upsert: false });
+    if (!uploadErr && uploadData) {
+      const { data: urlData } = supabase.storage.from("screams").getPublicUrl(filename);
+      audioUrl = urlData?.publicUrl || null;
+    }
+  }
+  const { data, error } = await supabase.from("screams").insert({
+    score,
+    peak_db: peakDb,
+    rank_title: rank.title,
+    rank_emoji: rank.em,
+    duration,
+    chart_data: chartData,
+    audio_url: audioUrl,
+    player_name: playerName || "anonymous",
+  }).select().single();
+  if (error) { console.error("upload error:", error); return null; }
+  return data;
+}
 
 const TAUNTS = [
   "you won't.", "say it. we dare you.",
@@ -110,7 +147,7 @@ export default function App() {
       <link href={FONT_LINK} rel="stylesheet" />
 
       {screen === "home" && (
-        <HomeScreen onPlay={() => setScreen("game")} />
+        <HomeScreen onPlay={() => setScreen("game")} onLeaderboard={() => setScreen("leaderboard")} />
       )}
 
       {screen === "game" && (
@@ -121,6 +158,14 @@ export default function App() {
         <ResultScreen result={result}
           onAgain={() => setScreen("game")}
           onHome={() => setScreen("home")}
+          onLeaderboard={() => setScreen("leaderboard")}
+        />
+      )}
+
+      {screen === "leaderboard" && (
+        <LeaderboardScreen
+          onPlay={() => setScreen("game")}
+          onHome={() => setScreen("home")}
         />
       )}
     </div>
@@ -130,7 +175,7 @@ export default function App() {
 // ═══════════════════════════════════════════════════════════════
 // HOME SCREEN — the Nintendo treatment
 // ═══════════════════════════════════════════════════════════════
-function HomeScreen({ onPlay }) {
+function HomeScreen({ onPlay, onLeaderboard }) {
   const [tauntIdx, setTauntIdx] = useState(0);
   const [tauntFade, setTauntFade] = useState(true);
   const [idleBounce, setIdleBounce] = useState(0);
@@ -216,7 +261,7 @@ function HomeScreen({ onPlay }) {
             {[
               { icon: "🎙", text: "press the button" },
               { icon: "🗣", text: <>scream <span style={{ color: "#e8e4e0", fontWeight: 500 }}>penis</span> as loud as you can</> },
-              { icon: "⏱", text: <>you have <span style={{ color: "#ffcc33", fontWeight: 500, fontFamily: "'JetBrains Mono'", fontSize: 12 }}>6.9</span> seconds</> },
+              { icon: "⏳", text: <>you have <span style={{ color: "#ffcc33", fontWeight: 500, fontFamily: "'JetBrains Mono'", fontSize: 12 }}>6.9</span> seconds</> },
             ].map((step, i) => (
               <div key={i} style={{
                 display: "flex", alignItems: "center", gap: 10,
@@ -327,13 +372,20 @@ function HomeScreen({ onPlay }) {
         </div>
       </div>
 
-      {/* ═══ BOTTOM TAGLINE ═══ */}
+      {/* ═══ BOTTOM ═══ */}
       <div style={{
         position: "fixed", bottom: 16, left: 0, right: 0,
         textAlign: "center", zIndex: 20,
         opacity: entered ? 1 : 0,
         transition: "opacity 1s ease 1s",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
       }}>
+        {supabase && <button onClick={onLeaderboard} style={{
+          fontFamily: "'JetBrains Mono'", fontSize: 8,
+          fontWeight: 300, letterSpacing: 3, color: "#333",
+          background: "none", border: "none", cursor: "pointer",
+          padding: "4px 12px",
+        }}>LEADERBOARD</button>}
         <div style={{
           fontFamily: "'JetBrains Mono'", fontSize: 7,
           fontWeight: 200, letterSpacing: 3, color: "#222230",
@@ -387,6 +439,7 @@ function PenisGame({ onGameEnd, autoStart }) {
   const [idleBounce, setIdleBounce] = useState(0);
   const [chartData, setChartData] = useState([]);
   const [wordDetected, setWordDetected] = useState(false);
+  const [wordCount, setWordCount] = useState(0);
   const [countdown, setCountdown] = useState(null); // 3, 2, 1, "GO"
 
   const gameStateRef = useRef("idle");
@@ -407,6 +460,8 @@ function PenisGame({ onGameEnd, autoStart }) {
   const chartRef = useRef([]);
   const speechRef = useRef(null);
   const wordBonusRef = useRef(false);
+  const wordCountRef = useRef(0);
+  const lastWordTimeRef = useRef(0);
   const lastPointsPush = useRef(0);
 
   // ─── IDLE ANIMATIONS ───
@@ -452,9 +507,16 @@ function PenisGame({ onGameEnd, autoStart }) {
           sr.onresult = (e) => {
             for (let i = e.resultIndex; i < e.results.length; i++) {
               const t = e.results[i][0].transcript.toLowerCase();
-              if (/penis|peanut|peen|keen/.test(t) && !wordBonusRef.current) {
-                wordBonusRef.current = true; setWordDetected(true);
-                scoreRef.current += (e.results[i][0].confidence || 0.5) * 100;
+              if (/penis|peanut|peen|keen/.test(t)) {
+                if (!wordBonusRef.current) { wordBonusRef.current = true; setWordDetected(true); }
+                // Count each finalized result with a 600ms cooldown to avoid duplicates
+                const now = Date.now();
+                if (e.results[i].isFinal && now - lastWordTimeRef.current > 600) {
+                  lastWordTimeRef.current = now;
+                  wordCountRef.current += 1;
+                  setWordCount(wordCountRef.current);
+                  scoreRef.current += (e.results[i][0].confidence || 0.5) * 100;
+                }
               }
             }
           };
@@ -549,11 +611,12 @@ function PenisGame({ onGameEnd, autoStart }) {
     scoreRef.current = 0; peakDbRef.current = -60;
     warnIdxRef.current = 0; lastWarnRef.current = Date.now();
     lastFlashRef.current = 0; lastPointsPush.current = 0;
-    wordBonusRef.current = false; chunksRef.current = []; chartRef.current = [];
+    wordBonusRef.current = false; wordCountRef.current = 0; lastWordTimeRef.current = 0;
+    chunksRef.current = []; chartRef.current = [];
     setDuration(0); setDbLevel(-60); setPeakDb(-60); setRmsNorm(0); setScore(0);
     setWarnings([]); setOnAir(false); setResult(null);
     setWordScale(1); setListeners(0); setBars(new Array(NUM_BARS).fill(0));
-    setTimeLeft(GAME_DURATION); setWordDetected(false); setChartData([]);
+    setTimeLeft(GAME_DURATION); setWordDetected(false); setWordCount(0); setChartData([]);
     if (recorderRef.current) try {
       recorderRef.current.start(500);
       setTimeout(() => { if (recorderRef.current?.state === "recording") try { recorderRef.current.stop(); } catch {} }, 8000);
@@ -563,8 +626,12 @@ function PenisGame({ onGameEnd, autoStart }) {
   }, [loop]);
 
   const startGame = useCallback(async () => {
-    if (gameStateRef.current === "listening" || gameStateRef.current === "countdown") return;
-    if (!micReady) { const ok = await initMic(); if (!ok) return; }
+    if (gameStateRef.current === "listening" || gameStateRef.current === "countdown" || gameStateRef.current === "mic-prompt") return;
+    if (!micReady) {
+      gameStateRef.current = "mic-prompt"; setGameState("mic-prompt");
+      const ok = await initMic();
+      if (!ok) { gameStateRef.current = "idle"; setGameState("idle"); return; }
+    }
     // Don't block on resume — it hangs without a user gesture (e.g. autoStart from useEffect)
     if (audioCtxRef.current?.state === "suspended") {
       try { await Promise.race([audioCtxRef.current.resume(), new Promise(r => setTimeout(r, 300))]); } catch {}
@@ -578,7 +645,7 @@ function PenisGame({ onGameEnd, autoStart }) {
     await new Promise(r => setTimeout(r, 700));
     setCountdown(1);
     await new Promise(r => setTimeout(r, 700));
-    setCountdown("SAY IT");
+    setCountdown("SAY PENIS");
     await new Promise(r => setTimeout(r, 500));
 
     if (gameStateRef.current !== "countdown") return; // user navigated away
@@ -604,7 +671,7 @@ function PenisGame({ onGameEnd, autoStart }) {
     const fd = (Date.now() - startTimeRef.current) / 1000;
     const chartSnapshot = [...chartRef.current];
     setBest(b => Math.max(b, fs)); setSessions(s => s + 1);
-    const resultData = { duration: fd, score: fs, peakDb: fp, rank: getRank(fp), listeners, wordDetected: wordBonusRef.current, chartData: chartSnapshot };
+    const resultData = { duration: fd, score: fs, peakDb: fp, rank: getRank(fp), listeners, wordDetected: wordBonusRef.current, wordCount: wordCountRef.current, chartData: chartSnapshot };
     setResult(resultData);
     const finalize = (blob) => onGameEnd({ ...resultData, audioBlob: blob });
     if (recorderRef.current?.state === "recording") {
@@ -628,6 +695,7 @@ function PenisGame({ onGameEnd, autoStart }) {
   const isResult = gameState === "result";
   const isIdle = gameState === "idle";
   const isCountdown = gameState === "countdown";
+  const isMicPrompt = gameState === "mic-prompt";
 
   const accent = "#e02020";
   const hotAccent = phase <= 2 ? "#e02020" : phase <= 4 ? "#ee3030" : "#ff2222";
@@ -669,6 +737,62 @@ function PenisGame({ onGameEnd, autoStart }) {
       }}>
         <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 300, letterSpacing: 3, color: "#e0202066" }}>THE PENIS GAME</span>
       </div>
+
+      {/* ═══ MIC PERMISSION OVERLAY ═══ */}
+      {isMicPrompt && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 50,
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          background: "#08090c",
+        }}>
+          <div style={{ textAlign: "center", animation: "fadeIn 0.5s", maxWidth: 320, padding: "0 24px" }}>
+            {/* Pulsing mic icon */}
+            <div style={{
+              width: 80, height: 80, borderRadius: "50%",
+              background: "radial-gradient(circle at 40% 34%, #1e1e28 0%, #111116 100%)",
+              border: "1px solid #222230",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 24px",
+              boxShadow: "0 0 40px #e0202015, 0 8px 30px rgba(0,0,0,0.4)",
+              animation: "breathe 2.5s ease-in-out infinite",
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#e02020" strokeWidth="1.5" style={{ filter: "drop-shadow(0 0 8px #e0202044)" }}>
+                <rect x="9" y="2" width="6" height="12" rx="3" />
+                <path d="M5 10a7 7 0 0 0 14 0" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+              </svg>
+            </div>
+
+            <h2 style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 28, fontWeight: 300, fontStyle: "italic",
+              color: "#f0ece8", letterSpacing: 2, margin: "0 0 12px",
+            }}>we need your mic</h2>
+
+            <p style={{
+              fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 400,
+              color: "#555", lineHeight: 1.6, margin: "0 0 8px",
+            }}>
+              the penis game requires audio to measure your courage.
+            </p>
+
+            <p style={{
+              fontFamily: "'Cormorant Garamond'", fontSize: 15,
+              fontWeight: 400, fontStyle: "italic",
+              color: "#333", margin: 0,
+            }}>please allow microphone access to continue.</p>
+
+            {/* Subtle animated dots */}
+            <div style={{
+              marginTop: 28,
+              fontFamily: "'JetBrains Mono'", fontSize: 8,
+              fontWeight: 300, letterSpacing: 4, color: "#222",
+              animation: "blink 1.5s ease-in-out infinite",
+            }}>WAITING FOR PERMISSION</div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ COUNTDOWN OVERLAY ═══ */}
       {isCountdown && countdown !== null && (
@@ -776,12 +900,12 @@ function PenisGame({ onGameEnd, autoStart }) {
         )}
 
         {isLive && wordDetected && (
-          <div style={{
+          <div key={wordCount} style={{
             fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 500,
             color: "#22cc66", letterSpacing: 2, marginBottom: 8,
             padding: "2px 8px", background: "#22cc6612", borderRadius: 3,
             animation: "popIn 0.3s ease-out",
-          }}>WORD DETECTED ✓</div>
+          }}>PENIS DETECTED{wordCount > 1 ? ` ×${wordCount}` : ""} ✓</div>
         )}
 
         {isLive && (
@@ -1192,7 +1316,7 @@ async function generateShareCard(result) {
 // ═══════════════════════════════════════════════════════════════
 // RESULT SCREEN
 // ═══════════════════════════════════════════════════════════════
-function ResultScreen({ result, onAgain, onHome }) {
+function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
   // Audio
   const audioUrlRef = useRef(null);
   const audioEl = useRef(null);
@@ -1206,6 +1330,12 @@ function ResultScreen({ result, onAgain, onHome }) {
   const [cardUrl, setCardUrl] = useState(null);
   const [copied, setCopied] = useState(false);
   const [cardHover, setCardHover] = useState(false);
+
+  // Leaderboard submit
+  const [playerName, setPlayerName] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploaded, setUploaded] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
   // Audio — handles webm Infinity duration bug
   useEffect(() => {
@@ -1315,11 +1445,12 @@ function ResultScreen({ result, onAgain, onHome }) {
         </div>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1, background: "#1a1a22", borderRadius: 8, overflow: "hidden", marginBottom: 14, textAlign: "center" }}>
+        <div style={{ display: "grid", gridTemplateColumns: result.wordCount > 0 ? "1fr 1fr 1fr 1fr" : "1fr 1fr 1fr", gap: 1, background: "#1a1a22", borderRadius: 8, overflow: "hidden", marginBottom: 14, textAlign: "center" }}>
           {[
             { l: "DURATION", v: `${result.duration.toFixed(1)}s` },
             { l: "PEAK VOL", v: `${Math.max(0, 60 + result.peakDb).toFixed(0)} dB` },
             { l: "SCORE", v: result.score.toLocaleString() },
+            ...(result.wordCount > 0 ? [{ l: "PENISES", v: `${result.wordCount}` }] : []),
           ].map((s, i) => (
             <div key={i} style={{ padding: "14px 8px", background: "#0b0b10" }}>
               <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 6, fontWeight: 300, letterSpacing: 3, color: "#28282e", marginBottom: 4 }}>{s.l}</div>
@@ -1478,6 +1609,65 @@ function ResultScreen({ result, onAgain, onHome }) {
           </div>
         )}
 
+        {/* Submit to leaderboard */}
+        {supabase && !uploaded && (
+          <div style={{
+            background: "#0e1018", border: "1px solid #14161f",
+            borderRadius: 10, padding: "14px 16px", marginBottom: 14,
+          }}>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 7, letterSpacing: 3, color: "#28282e", marginBottom: 10 }}>SUBMIT TO LEADERBOARD</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                placeholder="your name"
+                value={playerName}
+                onChange={e => setPlayerName(e.target.value.slice(0, 24))}
+                maxLength={24}
+                style={{
+                  flex: 1, padding: "10px 12px", borderRadius: 6,
+                  background: "#0a0c14", border: "1px solid #1a1c28",
+                  color: "#e8e4e0", fontFamily: "'DM Sans'", fontSize: 14,
+                  outline: "none",
+                }}
+              />
+              <button
+                disabled={uploading}
+                onClick={async () => {
+                  setUploading(true); setUploadError(null);
+                  const res = await uploadScream({
+                    score: result.score,
+                    peakDb: result.peakDb,
+                    rank: result.rank,
+                    duration: result.duration,
+                    chartData: result.chartData,
+                    audioBlob: result.audioBlob,
+                    playerName: playerName.trim() || "anonymous",
+                  });
+                  setUploading(false);
+                  if (res) { setUploaded(true); } else { setUploadError("failed — try again"); }
+                }}
+                style={{
+                  padding: "10px 20px", borderRadius: 6,
+                  background: uploading ? "#333" : "#e02020",
+                  border: "none", color: "#f0ece8", cursor: uploading ? "default" : "pointer",
+                  fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 400, letterSpacing: 1,
+                  whiteSpace: "nowrap",
+                }}
+              >{uploading ? "..." : "SUBMIT"}</button>
+            </div>
+            {uploadError && <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#ef4444", marginTop: 6 }}>{uploadError}</div>}
+          </div>
+        )}
+        {supabase && uploaded && (
+          <div style={{
+            background: "#22cc6612", border: "1px solid #22cc6625",
+            borderRadius: 10, padding: "12px 16px", marginBottom: 14,
+            textAlign: "center",
+          }}>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#22cc66", letterSpacing: 1 }}>SUBMITTED TO LEADERBOARD</div>
+          </div>
+        )}
+
         <button onClick={onAgain} style={{
           fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 400,
           fontStyle: "italic", color: "#f0ece8", background: "#e02020",
@@ -1485,6 +1675,12 @@ function ResultScreen({ result, onAgain, onHome }) {
           boxShadow: "0 4px 20px #e0202044", letterSpacing: 1, marginBottom: 10,
           width: "100%",
         }}>say it again</button>
+        {supabase && <button onClick={onLeaderboard} style={{
+          fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 400,
+          letterSpacing: 2, color: "#555", background: "#0e1018",
+          border: "1px solid #14161f", padding: "10px 0", borderRadius: 6,
+          cursor: "pointer", width: "100%", marginBottom: 10,
+        }}>LEADERBOARD</button>}
         <div style={{ textAlign: "center" }}>
           <button onClick={onHome} style={{ fontFamily: "'Cormorant Garamond'", fontSize: 13, fontStyle: "italic", color: "#333", background: "none", border: "none", cursor: "pointer", marginTop: 4 }}>home</button>
         </div>
@@ -1498,6 +1694,202 @@ function ResultScreen({ result, onAgain, onHome }) {
         button:active { transform: scale(0.96) !important; }
         a { text-decoration: none; }
       `}</style>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEADERBOARD SCREEN — hear the screams of others
+// ═══════════════════════════════════════════════════════════════
+const PAGE_SIZE = 20;
+
+function LeaderboardScreen({ onPlay, onHome }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [playingId, setPlayingId] = useState(null);
+  const audioRef = useRef(null);
+
+  const fetchEntries = useCallback(async (offset = 0) => {
+    if (!supabase) { setLoading(false); return; }
+    const { data, error } = await supabase
+      .from("screams")
+      .select("*")
+      .order("score", { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) { console.error("leaderboard fetch error:", error); setLoading(false); return; }
+    if (offset === 0) setEntries(data || []);
+    else setEntries(prev => [...prev, ...(data || [])]);
+    setHasMore((data || []).length === PAGE_SIZE);
+    setLoading(false); setLoadingMore(false);
+  }, []);
+
+  useEffect(() => { fetchEntries(); }, [fetchEntries]);
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    fetchEntries(entries.length);
+  };
+
+  const togglePlay = (entry) => {
+    if (!entry.audio_url) return;
+    if (playingId === entry.id) {
+      audioRef.current?.pause();
+      setPlayingId(null);
+      return;
+    }
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.onended = () => setPlayingId(null);
+      audioRef.current.onerror = () => setPlayingId(null);
+    }
+    audioRef.current.src = entry.audio_url;
+    audioRef.current.play().catch(() => setPlayingId(null));
+    setPlayingId(entry.id);
+  };
+
+  useEffect(() => () => { audioRef.current?.pause(); }, []);
+
+  const fmtDur = (s) => {
+    if (!s || isNaN(s)) return "—";
+    return `${s.toFixed(1)}s`;
+  };
+
+  return (
+    <div style={{
+      minHeight: "100vh", display: "flex", flexDirection: "column",
+      alignItems: "center", padding: "32px 16px 40px",
+      background: "#08090c", position: "relative", overflow: "hidden",
+    }}>
+      {/* Grain + vignette */}
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 100, opacity: 0.02,
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+      }} />
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2, boxShadow: "inset 0 0 100px rgba(0,0,0,0.55)" }} />
+
+      <div style={{ position: "relative", zIndex: 10, width: "100%", maxWidth: 440, animation: "fadeIn 0.4s" }}>
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <h1 style={{
+            fontFamily: "'Cormorant Garamond', serif",
+            fontSize: 36, fontWeight: 300, fontStyle: "italic",
+            color: "#f0ece8", letterSpacing: 3, margin: 0, marginBottom: 4,
+          }}>hall of shame</h1>
+          <div style={{
+            fontFamily: "'JetBrains Mono'", fontSize: 8,
+            fontWeight: 300, letterSpacing: 3, color: "#333",
+          }}>LOUDEST SCREAMS — RANKED BY SCORE</div>
+        </div>
+
+        {/* Entries */}
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#333", letterSpacing: 2 }}>LOADING...</div>
+          </div>
+        ) : entries.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <div style={{ fontFamily: "'Cormorant Garamond'", fontSize: 18, fontStyle: "italic", color: "#444", marginBottom: 8 }}>no screams yet</div>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#333", letterSpacing: 1 }}>be the first</div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {entries.map((entry, i) => (
+              <LeaderboardEntry
+                key={entry.id}
+                entry={entry}
+                position={i + 1}
+                isPlaying={playingId === entry.id}
+                onTogglePlay={() => togglePlay(entry)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Load more */}
+        {hasMore && entries.length > 0 && !loading && (
+          <button onClick={loadMore} disabled={loadingMore} style={{
+            width: "100%", padding: "12px 0", marginTop: 12,
+            borderRadius: 6, background: "#0e1018", border: "1px solid #14161f",
+            color: "#555", cursor: loadingMore ? "default" : "pointer",
+            fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 400, letterSpacing: 2,
+          }}>{loadingMore ? "..." : "LOAD MORE"}</button>
+        )}
+
+        {/* Nav */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
+          <button onClick={onPlay} style={{
+            fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 400,
+            fontStyle: "italic", color: "#f0ece8", background: "#e02020",
+            border: "none", padding: "11px 36px", borderRadius: 8, cursor: "pointer",
+            boxShadow: "0 4px 20px #e0202044", letterSpacing: 1, width: "100%",
+          }}>say it</button>
+          <div style={{ textAlign: "center" }}>
+            <button onClick={onHome} style={{
+              fontFamily: "'Cormorant Garamond'", fontSize: 13, fontStyle: "italic",
+              color: "#333", background: "none", border: "none", cursor: "pointer",
+            }}>home</button>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #08090c; }
+        button:focus { outline: none; }
+        button:active { transform: scale(0.96) !important; }
+      `}</style>
+    </div>
+  );
+}
+
+function LeaderboardEntry({ entry, position, isPlaying, onTogglePlay }) {
+  const peakDisp = entry.peak_db != null ? Math.max(0, 60 + entry.peak_db).toFixed(0) : "—";
+  const posColor = position === 1 ? "#ffcc33" : position === 2 ? "#c0c0c0" : position === 3 ? "#cd7f32" : "#333";
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10,
+      padding: "10px 12px", background: "#0b0b10",
+      borderRadius: 6, border: "1px solid #111118",
+    }}>
+      {/* Position */}
+      <div style={{
+        fontFamily: "'JetBrains Mono'", fontSize: 12, fontWeight: 300,
+        color: posColor, width: 28, textAlign: "center", flexShrink: 0,
+      }}>#{position}</div>
+
+      {/* Play button */}
+      <button onClick={onTogglePlay} disabled={!entry.audio_url} style={{
+        width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+        background: isPlaying ? "#e02020" : entry.audio_url ? "#1a1c28" : "#0e0e14",
+        border: `1px solid ${isPlaying ? "#e02020" : entry.audio_url ? "#22242e" : "#14141c"}`,
+        color: entry.audio_url ? "#f0ece8" : "#222",
+        cursor: entry.audio_url ? "pointer" : "default",
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12,
+        boxShadow: isPlaying ? "0 0 10px #e0202033" : "none",
+      }}>
+        {isPlaying ? "⏸" : "▶"}
+      </button>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+          <span style={{
+            fontFamily: "'DM Sans'", fontSize: 13, fontWeight: 500,
+            color: "#e8e4e0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>{entry.player_name || "anonymous"}</span>
+          <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#555", flexShrink: 0 }}>
+            {entry.rank_emoji} {entry.rank_title}
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 10, fontFamily: "'JetBrains Mono'", fontSize: 8, color: "#333" }}>
+          <span><span style={{ color: "#e02020" }}>{entry.score?.toLocaleString()}</span> pts</span>
+          <span>{peakDisp} dB</span>
+          <span>{entry.duration != null ? `${entry.duration.toFixed(1)}s` : "—"}</span>
+        </div>
+      </div>
     </div>
   );
 }
