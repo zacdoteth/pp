@@ -1339,6 +1339,7 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Audio — handles webm Infinity duration bug
   useEffect(() => {
@@ -1428,8 +1429,9 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
 
   return (
     <div style={{
-      minHeight: "100vh", display: "flex", flexDirection: "column",
-      alignItems: "center", padding: "32px 24px 40px",
+      minHeight: "100dvh", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      padding: "16px 20px 20px",
       background: "#08090c", position: "relative", overflow: "hidden",
     }}>
       {/* Grain + vignette */}
@@ -1439,34 +1441,41 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2, boxShadow: "inset 0 0 100px rgba(0,0,0,0.55)" }} />
 
       <div style={{ position: "relative", zIndex: 10, width: "100%", maxWidth: 380, animation: "fadeIn 0.4s" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontFamily: "'Cormorant Garamond'", fontSize: 14, fontWeight: 400, fontStyle: "italic", color: "#444", marginBottom: 20 }}>courage ran out.</div>
-          <div style={{ fontSize: 52, marginBottom: 8, lineHeight: 1 }}>{result.rank.em}</div>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, fontWeight: 300, fontStyle: "italic", color: "#f0ece8", letterSpacing: 2, marginBottom: 4 }}>{result.rank.title}</div>
-          <div style={{ fontFamily: "'Cormorant Garamond'", fontSize: 14, fontWeight: 400, fontStyle: "italic", color: "#444", marginBottom: 20 }}>{result.rank.sub}</div>
+        {/* Header — compact */}
+        <div style={{ textAlign: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 40, marginBottom: 2, lineHeight: 1 }}>{result.rank.em}</div>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 300, fontStyle: "italic", color: "#f0ece8", letterSpacing: 2, marginBottom: 2 }}>{result.rank.title}</div>
+          <div style={{ fontFamily: "'Cormorant Garamond'", fontSize: 13, fontWeight: 400, fontStyle: "italic", color: "#666" }}>{result.rank.sub}</div>
         </div>
 
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: result.wordCount > 0 ? "1fr 1fr 1fr 1fr" : "1fr 1fr 1fr", gap: 1, background: "#1a1a22", borderRadius: 8, overflow: "hidden", marginBottom: 14, textAlign: "center" }}>
+        {/* SCORE — hero */}
+        <div style={{ textAlign: "center", marginBottom: 12 }}>
+          <div style={{
+            fontFamily: "'JetBrains Mono'", fontSize: 72, fontWeight: 600,
+            color: "#e02020", lineHeight: 1,
+            textShadow: "0 0 40px #e0202033, 0 0 80px #e0202018",
+          }}>{result.score.toLocaleString()}</div>
+          <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 11, letterSpacing: 4, color: "#666", marginTop: 4 }}>POINTS</div>
+        </div>
+
+        {/* Stats row — compact, score removed */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 24, marginBottom: 12, textAlign: "center" }}>
           {[
             { l: "DURATION", v: `${result.duration.toFixed(1)}s` },
-            { l: "PEAK VOL", v: `${Math.max(0, 60 + result.peakDb).toFixed(0)} dB` },
-            { l: "SCORE", v: result.score.toLocaleString() },
+            { l: "PEAK", v: `${Math.max(0, 60 + result.peakDb).toFixed(0)} dB` },
             ...(result.wordCount > 0 ? [{ l: "PENISES", v: `${result.wordCount}` }] : []),
           ].map((s, i) => (
-            <div key={i} style={{ padding: "14px 8px", background: "#0b0b10" }}>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 6, fontWeight: 300, letterSpacing: 3, color: "#28282e", marginBottom: 4 }}>{s.l}</div>
+            <div key={i}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 300, letterSpacing: 2, color: "#555", marginBottom: 3 }}>{s.l}</div>
               <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 18, fontWeight: 200, color: "#e8e4e0" }}>{s.v}</div>
             </div>
           ))}
         </div>
 
-        {/* $PENIS chart */}
+        {/* $PENIS chart — compact */}
         {chartData.length > 3 && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 7, fontWeight: 400, color: "#222230", letterSpacing: 2, marginBottom: 3 }}>$PENIS</div>
-            <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block" }}>
+          <div style={{ marginBottom: 10 }}>
+            <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block", height: 35 }}>
               <defs>
                 <linearGradient id="rcg" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#e02020" stopOpacity="0.2" />
@@ -1483,17 +1492,16 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
           </div>
         )}
 
-        {/* Audio player */}
+        {/* Audio player — compact */}
         {result.audioBlob && (
           <div style={{
             background: "#0e1018", border: "1px solid #14161f",
-            borderRadius: 10, padding: "14px 16px", marginBottom: 14,
+            borderRadius: 8, padding: "10px 12px", marginBottom: 10,
           }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 7, letterSpacing: 3, color: "#28282e", marginBottom: 10 }}>YOUR SCREAM</div>
             <div onClick={seekTo} style={{
-              width: "100%", height: 32, borderRadius: 4,
+              width: "100%", height: 28, borderRadius: 4,
               background: "#0a0c14", cursor: "pointer", position: "relative",
-              overflow: "hidden", marginBottom: 10,
+              overflow: "hidden", marginBottom: 8,
             }}>
               <div style={{
                 position: "absolute", left: 0, top: 0, bottom: 0,
@@ -1521,104 +1529,33 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
                 transition: playing ? "left 0.05s linear" : "left 0.15s ease-out",
               }} />
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button onClick={togglePlay} style={{
-                width: 36, height: 36, borderRadius: "50%",
+                width: 32, height: 32, borderRadius: "50%",
                 background: playing ? "#e02020" : "#1a1c28",
                 border: `1px solid ${playing ? "#e02020" : "#22242e"}`,
                 color: "#f0ece8", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 14, flexShrink: 0,
+                fontSize: 12, flexShrink: 0,
                 boxShadow: playing ? "0 0 12px #e0202033" : "none",
               }}>
                 {playing ? "⏸" : "▶"}
               </button>
-              <div style={{ flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#555" }}>
+              <div style={{ flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#666" }}>
                 <span style={{ color: "#e8e4e0" }}>{fmtTime(progress * audioDur)}</span>
                 <span> / {fmtTime(audioDur)}</span>
               </div>
-              <button onClick={downloadAudio} style={{
-                width: 32, height: 32, borderRadius: 6,
-                background: "#1a1c28", border: "1px solid #22242e",
-                color: "#666", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }} title="Download audio">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M12 5v10M7 12l5 5 5-5M5 19h14" />
-                </svg>
-              </button>
             </div>
           </div>
         )}
 
-        {/* Share card */}
-        {cardUrl && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 7, letterSpacing: 3, color: "#28282e", marginBottom: 8 }}>YOUR CARD</div>
-            <div
-              onClick={copyCard}
-              onMouseEnter={() => setCardHover(true)}
-              onMouseLeave={() => setCardHover(false)}
-              style={{ position: "relative", cursor: "pointer", borderRadius: 8, overflow: "hidden", border: `1px solid ${copied ? "#22cc6625" : cardHover ? "#e0202030" : "#14161f"}`, transition: "border-color 0.2s" }}
-            >
-              <img src={cardUrl} alt="Share card" style={{ width: "100%", display: "block" }} />
-              <div style={{
-                position: "absolute", inset: 0,
-                background: copied ? "rgba(34,204,102,0.12)" : "rgba(0,0,0,0.45)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                opacity: cardHover || copied ? 1 : 0,
-                transition: "opacity 0.15s",
-                pointerEvents: "none",
-              }}>
-                <span style={{
-                  fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 400,
-                  letterSpacing: 2, color: copied ? "#22cc66" : "#fff",
-                  background: copied ? "#22cc6620" : "#ffffff15",
-                  padding: "6px 16px", borderRadius: 6,
-                  backdropFilter: "blur(4px)",
-                }}>{copied ? "COPIED!" : "CLICK TO COPY"}</span>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <button onClick={copyCard} style={{
-                flex: 1, padding: "10px 0", borderRadius: 6,
-                background: copied ? "#22cc6612" : "#e0202010",
-                border: `1px solid ${copied ? "#22cc6625" : "#e0202020"}`,
-                color: copied ? "#22cc66" : "#e02020",
-                cursor: "pointer",
-                fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 400, letterSpacing: 1,
-              }}>
-                {copied ? "COPIED" : "COPY IMAGE"}
-              </button>
-              <button onClick={downloadCard} style={{
-                flex: 1, padding: "10px 0", borderRadius: 6,
-                background: "#0e1018", border: "1px solid #14161f",
-                color: "#555", cursor: "pointer",
-                fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 400, letterSpacing: 1,
-              }}>
-                SAVE
-              </button>
-              <a href={`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer" style={{
-                flex: 1, padding: "10px 0", borderRadius: 6,
-                background: "#0a0a0a", border: "1px solid #222",
-                color: "#e7e9ea", cursor: "pointer",
-                fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 400, letterSpacing: 1,
-                textDecoration: "none", textAlign: "center",
-                display: "block",
-              }}>
-                SHARE
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* Submit to leaderboard */}
+        {/* Submit to leaderboard — compact */}
         {supabase && !uploaded && (
           <div style={{
             background: "#0e1018", border: "1px solid #14161f",
-            borderRadius: 10, padding: "14px 16px", marginBottom: 14,
+            borderRadius: 8, padding: "10px 12px", marginBottom: 10,
           }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 7, letterSpacing: 3, color: "#28282e", marginBottom: 10 }}>SUBMIT TO LEADERBOARD</div>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, letterSpacing: 3, color: "#555", marginBottom: 8 }}>SUBMIT TO LEADERBOARD</div>
             <div style={{ display: "flex", gap: 8 }}>
               <input
                 type="text"
@@ -1627,7 +1564,7 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
                 onChange={e => setPlayerName(e.target.value.slice(0, 24))}
                 maxLength={24}
                 style={{
-                  flex: 1, padding: "10px 12px", borderRadius: 6,
+                  flex: 1, padding: "9px 12px", borderRadius: 6,
                   background: "#0a0c14", border: "1px solid #1a1c28",
                   color: "#e8e4e0", fontFamily: "'DM Sans'", fontSize: 14,
                   outline: "none",
@@ -1650,7 +1587,7 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
                   if (res) { setUploaded(true); } else { setUploadError("failed — try again"); }
                 }}
                 style={{
-                  padding: "10px 20px", borderRadius: 6,
+                  padding: "9px 18px", borderRadius: 6,
                   background: uploading ? "#333" : "#e02020",
                   border: "none", color: "#f0ece8", cursor: uploading ? "default" : "pointer",
                   fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 400, letterSpacing: 1,
@@ -1664,30 +1601,124 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
         {supabase && uploaded && (
           <div style={{
             background: "#22cc6612", border: "1px solid #22cc6625",
-            borderRadius: 10, padding: "12px 16px", marginBottom: 14,
+            borderRadius: 8, padding: "10px 14px", marginBottom: 10,
             textAlign: "center",
           }}>
             <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#22cc66", letterSpacing: 1 }}>SUBMITTED TO LEADERBOARD</div>
           </div>
         )}
 
-        <button onClick={onAgain} style={{
-          fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 400,
-          fontStyle: "italic", color: "#f0ece8", background: "#e02020",
-          border: "none", padding: "11px 36px", borderRadius: 8, cursor: "pointer",
-          boxShadow: "0 4px 20px #e0202044", letterSpacing: 1, marginBottom: 10,
-          width: "100%",
-        }}>try again</button>
-        {supabase && <button onClick={onLeaderboard} style={{
-          fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 400,
-          letterSpacing: 2, color: "#555", background: "#0e1018",
-          border: "1px solid #14161f", padding: "10px 0", borderRadius: 6,
-          cursor: "pointer", width: "100%", marginBottom: 10,
-        }}>LEADERBOARD</button>}
-        <div style={{ textAlign: "center" }}>
-          <button onClick={onHome} style={{ fontFamily: "'Cormorant Garamond'", fontSize: 13, fontStyle: "italic", color: "#333", background: "none", border: "none", cursor: "pointer", marginTop: 4 }}>home</button>
+        {/* Action buttons */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <button onClick={onAgain} style={{
+            flex: 1, fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 400,
+            fontStyle: "italic", color: "#f0ece8", background: "#e02020",
+            border: "none", padding: "11px 0", borderRadius: 8, cursor: "pointer",
+            boxShadow: "0 4px 20px #e0202044", letterSpacing: 1,
+          }}>try again</button>
+          <button onClick={() => setShowShareModal(true)} style={{
+            flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 12, fontWeight: 400,
+            letterSpacing: 2, color: "#f0ece8", background: "#1a1c28",
+            border: "1px solid #22242e", padding: "11px 0", borderRadius: 8, cursor: "pointer",
+          }}>SHARE</button>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {supabase && <button onClick={onLeaderboard} style={{
+            flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 400,
+            letterSpacing: 2, color: "#666", background: "#0e1018",
+            border: "1px solid #14161f", padding: "9px 0", borderRadius: 6,
+            cursor: "pointer",
+          }}>LEADERBOARD</button>}
+          <button onClick={onHome} style={{
+            flex: 1, fontFamily: "'Cormorant Garamond'", fontSize: 13, fontStyle: "italic",
+            color: "#555", background: "#0e1018", border: "1px solid #14161f",
+            padding: "9px 0", borderRadius: 6, cursor: "pointer",
+          }}>home</button>
         </div>
       </div>
+
+      {/* ═══ SHARE MODAL ═══ */}
+      {showShareModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 200,
+          background: "rgba(0,0,0,0.88)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 20, animation: "fadeIn 0.2s",
+        }} onClick={(e) => { if (e.target === e.currentTarget) setShowShareModal(false); }}>
+          <div style={{ width: "100%", maxWidth: 380 }}>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, letterSpacing: 3, color: "#666", marginBottom: 14, textAlign: "center" }}>SHARE YOUR SCREAM</div>
+
+            {cardUrl && (
+              <div
+                onClick={copyCard}
+                style={{
+                  position: "relative", cursor: "pointer",
+                  borderRadius: 10, overflow: "hidden",
+                  border: `1px solid ${copied ? "#22cc6625" : "#222"}`,
+                  marginBottom: 16, transition: "border-color 0.2s",
+                }}
+              >
+                <img src={cardUrl} alt="Share card" style={{ width: "100%", display: "block" }} />
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: copied ? "rgba(34,204,102,0.15)" : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  opacity: copied ? 1 : 0,
+                  transition: "opacity 0.15s",
+                  pointerEvents: "none",
+                }}>
+                  <span style={{
+                    fontFamily: "'JetBrains Mono'", fontSize: 13, fontWeight: 500,
+                    letterSpacing: 2, color: "#22cc66",
+                    background: "#22cc6620",
+                    padding: "8px 20px", borderRadius: 8,
+                  }}>COPIED!</span>
+                </div>
+              </div>
+            )}
+
+            {/* Big share buttons */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <button onClick={copyCard} style={{
+                flex: 1, padding: "13px 0", borderRadius: 8,
+                background: copied ? "#22cc6615" : "#e0202015",
+                border: `1px solid ${copied ? "#22cc6630" : "#e0202030"}`,
+                color: copied ? "#22cc66" : "#e02020",
+                cursor: "pointer",
+                fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 500, letterSpacing: 1,
+              }}>{copied ? "COPIED!" : "COPY IMAGE"}</button>
+              <a href={`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer" style={{
+                flex: 1, padding: "13px 0", borderRadius: 8,
+                background: "#fff", border: "1px solid #fff",
+                color: "#000", cursor: "pointer",
+                fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 500, letterSpacing: 1,
+                textDecoration: "none", textAlign: "center", display: "block",
+              }}>POST ON 𝕏</a>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <button onClick={downloadCard} style={{
+                flex: 1, padding: "10px 0", borderRadius: 6,
+                background: "#0e1018", border: "1px solid #1a1c28",
+                color: "#666", cursor: "pointer",
+                fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 400, letterSpacing: 1,
+              }}>SAVE IMAGE</button>
+              {result.audioBlob && <button onClick={downloadAudio} style={{
+                flex: 1, padding: "10px 0", borderRadius: 6,
+                background: "#0e1018", border: "1px solid #1a1c28",
+                color: "#666", cursor: "pointer",
+                fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 400, letterSpacing: 1,
+              }}>SAVE AUDIO</button>}
+            </div>
+
+            <button onClick={() => setShowShareModal(false)} style={{
+              width: "100%", padding: "12px 0", borderRadius: 8,
+              background: "none", border: "1px solid #333",
+              color: "#666", cursor: "pointer",
+              fontFamily: "'Cormorant Garamond'", fontSize: 15, fontStyle: "italic",
+            }}>close</button>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
