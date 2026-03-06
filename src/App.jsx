@@ -6,6 +6,163 @@ const haptics = new WebHaptics();
 const haptic = (type) => { try { haptics.trigger(type); } catch {} };
 
 // ═══════════════════════════════════════════════════════════════
+// SHADER BACKGROUND — Refik Anadol-inspired generative visuals
+// ═══════════════════════════════════════════════════════════════
+let shaderIntensity = 0;
+
+const VERT_SRC = `#version 300 es
+in vec2 a_pos;
+void main(){gl_Position=vec4(a_pos,0.,1.);}`;
+
+const FRAG_SRC = `#version 300 es
+precision mediump float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform float u_intensity;
+out vec4 O;
+
+vec2 hash(vec2 p){
+  p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3)));
+  return fract(sin(p)*43758.5453);
+}
+
+float sdCap(vec2 p,vec2 a,vec2 b,float r){
+  vec2 pa=p-a,ba=b-a;
+  return length(pa-ba*clamp(dot(pa,ba)/dot(ba,ba),0.,1.))-r;
+}
+
+float sdPP(vec2 p){
+  float sh=sdCap(p,vec2(0.,-.2),vec2(0.,.24),.09);
+  float hd=length(p-vec2(0.,.28))-.12;
+  float body=min(sh,hd);
+  float b1=length(p-vec2(-.09,-.26))-.075;
+  float b2=length(p-vec2(.09,-.26))-.075;
+  return min(body,min(b1,b2));
+}
+
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_resolution;
+  float asp=u_resolution.x/u_resolution.y;
+  vec2 st=uv*vec2(asp,1.);
+  float t=u_time;
+  vec3 col=vec3(.01,.002,.004);
+
+  // Two layers of floating penises — depth illusion
+  for(int layer=0;layer<2;layer++){
+    float cs=layer==0?.55:.38;
+    float bright=layer==0?1.:.5;
+    float spd=layer==0?1.:1.4;
+    float off=layer==0?0.:37.;
+    vec2 gid=floor(st/cs);
+
+    for(float j=-1.;j<=1.;j++){
+      for(float i=-1.;i<=1.;i++){
+        vec2 cell=gid+vec2(i,j);
+        vec2 rnd=hash(cell+off);
+        vec2 rnd2=hash(cell+off+73.);
+
+        vec2 ctr=(cell+.12+rnd*.76)*cs;
+        ctr+=vec2(
+          sin(t*.1*spd+rnd.x*6.28)*.06,
+          cos(t*.08*spd+rnd.y*6.28)*.05
+        );
+
+        vec2 lp=st-ctr;
+        float ang=rnd.x*6.28+t*(.025+rnd.y*.02)*spd;
+        float ca=cos(ang),sa=sin(ang);
+        lp=vec2(lp.x*ca-lp.y*sa,lp.x*sa+lp.y*ca);
+
+        float sc=layer==0?.28+rnd2.x*.16:.18+rnd2.x*.1;
+        lp/=sc;
+
+        float d=sdPP(lp);
+
+        // Neon glow outline + soft halo + subtle fill
+        float outline=exp(-abs(d)*20.)*.55;
+        float glow=exp(-max(d,0.)*4.5)*.18;
+        float fill=smoothstep(.01,-.1,d)*.08;
+        float b=(outline+glow+fill)*(.35+rnd2.y*.65)*bright;
+
+        col+=vec3(.5,.025,.015)*b*sc;
+      }
+    }
+  }
+
+  // Dark center vignette — UI lives in clean darkness
+  float d=length((uv-.5)*vec2(1.,.85));
+  float vig=smoothstep(.08,.58,d);
+  col*=mix(.03,1.,vig);
+  col+=vec3(.04,.003,.002)*vig;
+
+  // Subtle breathing
+  float breath=sin(t*.25)*.05+sin(t*.13)*.03;
+  col*=1.+breath*.12;
+
+  // Audio — penises come alive when you scream
+  col*=1.+u_intensity*4.;
+  col+=vec3(.3,.02,.01)*u_intensity;
+
+  col*=.7+u_intensity*.4;
+  col=col/(1.+col*.15);
+  O=vec4(col,1.);
+}`;
+
+function ShaderBackground() {
+  const canvasRef = useRef(null);
+  const rafRef = useRef(null);
+  const t0 = useRef(performance.now());
+
+  useEffect(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const gl = c.getContext("webgl2", { alpha: false, antialias: false, preserveDrawingBuffer: false, powerPreference: "low-power" });
+    if (!gl) return;
+
+    const compile = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+    const vs = compile(gl.VERTEX_SHADER, VERT_SRC);
+    const fs = compile(gl.FRAGMENT_SHADER, FRAG_SRC);
+    const pg = gl.createProgram();
+    gl.attachShader(pg, vs); gl.attachShader(pg, fs); gl.linkProgram(pg); gl.useProgram(pg);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+    const aPos = gl.getAttribLocation(pg, "a_pos");
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+    const uTime = gl.getUniformLocation(pg, "u_time");
+    const uRes = gl.getUniformLocation(pg, "u_resolution");
+    const uInt = gl.getUniformLocation(pg, "u_intensity");
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio, 1.5);
+      c.width = Math.floor(window.innerWidth * dpr * 0.75);
+      c.height = Math.floor(window.innerHeight * dpr * 0.75);
+      gl.viewport(0, 0, c.width, c.height);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    let last = 0;
+    const draw = (now) => {
+      rafRef.current = requestAnimationFrame(draw);
+      if (now - last < 33) return;
+      last = now;
+      gl.uniform1f(uTime, (now - t0.current) / 1000);
+      gl.uniform2f(uRes, c.width, c.height);
+      gl.uniform1f(uInt, shaderIntensity);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    };
+    rafRef.current = requestAnimationFrame(draw);
+
+    return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener("resize", resize); };
+  }, []);
+
+  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }} />;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // THE PENIS GAME — play.fun edition
 // say it loud. get points. go viral.
 // ═══════════════════════════════════════════════════════════════
@@ -137,6 +294,7 @@ function savePoints(score) {
 export default function App() {
   const [screen, setScreen] = useState("home");
   const [result, setResult] = useState(null);
+  const [videoEnabled, setVideoEnabled] = useState(false);
 
   useEffect(() => { initSDK(); }, []);
 
@@ -148,17 +306,18 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#08090c" }}>
+    <div style={{ minHeight: "100vh" }}>
+      <ShaderBackground />
       <link href={FONT_LINK} rel="stylesheet" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
       {screen === "home" && (
-        <HomeScreen onPlay={() => setScreen("game")} onLeaderboard={() => setScreen("leaderboard")} />
+        <HomeScreen onPlay={() => setScreen("game")} onLeaderboard={() => setScreen("leaderboard")} videoEnabled={videoEnabled} setVideoEnabled={setVideoEnabled} />
       )}
 
       {screen === "game" && (
-        <PenisGame onGameEnd={onGameEnd} autoStart />
+        <PenisGame onGameEnd={onGameEnd} autoStart videoEnabled={videoEnabled} />
       )}
 
       {screen === "result" && result && (
@@ -182,7 +341,7 @@ export default function App() {
 // ═══════════════════════════════════════════════════════════════
 // HOME SCREEN — the Nintendo treatment
 // ═══════════════════════════════════════════════════════════════
-function HomeScreen({ onPlay, onLeaderboard }) {
+function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
   const [tauntIdx, setTauntIdx] = useState(0);
   const [tauntFade, setTauntFade] = useState(true);
   const [idleBounce, setIdleBounce] = useState(0);
@@ -209,7 +368,7 @@ function HomeScreen({ onPlay, onLeaderboard }) {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#08090c",
+      minHeight: "100vh", background: "transparent",
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
       overflow: "hidden", position: "relative", userSelect: "none",
@@ -220,16 +379,6 @@ function HomeScreen({ onPlay, onLeaderboard }) {
       }} />
       {/* Vignette */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2, boxShadow: "inset 0 0 120px rgba(0,0,0,0.6)" }} />
-
-      {/* Warm ambient glow behind button */}
-      <div style={{
-        position: "fixed", top: "42%", left: "50%",
-        width: 400, height: 400,
-        transform: "translate(-50%, -50%)", borderRadius: "50%",
-        background: "radial-gradient(circle, #e0202010 0%, #e020200a 30%, transparent 65%)",
-        pointerEvents: "none", zIndex: 1,
-        animation: "breathe 4s ease-in-out infinite",
-      }} />
 
       {/* ═══ CENTER CONTENT ═══ */}
       <div style={{
@@ -397,6 +546,33 @@ function HomeScreen({ onPlay, onLeaderboard }) {
             </button>
           </div>
         </div>
+
+        {/* Video toggle */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+          opacity: entered ? 1 : 0,
+          transition: "opacity 0.8s ease 0.6s",
+        }}>
+          <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#444", letterSpacing: 1 }}>
+            📹 record yourself
+          </span>
+          <button
+            onClick={() => setVideoEnabled(!videoEnabled)}
+            style={{
+              width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer",
+              background: videoEnabled ? "#e02020" : "#222",
+              position: "relative", transition: "background 0.2s",
+              outline: "none", WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            <div style={{
+              width: 16, height: 16, borderRadius: "50%", background: "#f0ece8",
+              position: "absolute", top: 2,
+              left: videoEnabled ? 18 : 2,
+              transition: "left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            }} />
+          </button>
+        </div>
       </div>
 
       {/* ═══ BOTTOM ═══ */}
@@ -436,7 +612,7 @@ function HomeScreen({ onPlay, onLeaderboard }) {
 // ═══════════════════════════════════════════════════════════════
 // THE PENIS GAME — the core. preserved. + audio recording + chart + speech
 // ═══════════════════════════════════════════════════════════════
-function PenisGame({ onGameEnd, autoStart }) {
+function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
   const [gameState, setGameState] = useState(autoStart ? "countdown" : "idle");
   const [duration, setDuration] = useState(0);
   const [dbLevel, setDbLevel] = useState(-60);
@@ -488,6 +664,13 @@ function PenisGame({ onGameEnd, autoStart }) {
   const lastWordTimeRef = useRef(0);
   const lastPointsPush = useRef(0);
 
+  // Video recording refs
+  const videoStreamRef = useRef(null);
+  const videoRecorderRef = useRef(null);
+  const videoChunksRef = useRef([]);
+  const videoPreviewRef = useRef(null);
+  const videoMimeRef = useRef("video/webm");
+
   // ─── IDLE ANIMATIONS ───
   useEffect(() => {
     if (gameState !== "idle") return;
@@ -508,9 +691,27 @@ function PenisGame({ onGameEnd, autoStart }) {
   // ─── MIC ───
   const initMic = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const constraints = {
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-      });
+      };
+      if (videoEnabled) {
+        constraints.video = { facingMode: "user", width: { ideal: 720 }, height: { ideal: 1280 } };
+      }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        // If video+audio failed, try audio only
+        if (videoEnabled) {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+          });
+        } else {
+          throw e;
+        }
+      }
+
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const src = ctx.createMediaStreamSource(stream);
       const an = ctx.createAnalyser();
@@ -519,11 +720,30 @@ function PenisGame({ onGameEnd, autoStart }) {
       analyserRef.current = an; audioCtxRef.current = ctx; streamRef.current = stream;
       pcmBufRef.current = new Float32Array(an.fftSize);
       freqBufRef.current = new Uint8Array(an.frequencyBinCount);
+
+      // Audio recorder
       try {
         const rec = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
         rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
         recorderRef.current = rec;
       } catch {}
+
+      // Video recorder (if stream has video tracks)
+      if (stream.getVideoTracks().length > 0) {
+        videoStreamRef.current = stream;
+        // Pick best supported video codec
+        const videoMime = ["video/mp4", "video/webm;codecs=vp9,opus", "video/webm"].find(
+          m => MediaRecorder.isTypeSupported(m)
+        ) || "video/webm";
+        videoMimeRef.current = videoMime;
+        try {
+          const vrec = new MediaRecorder(stream, { mimeType: videoMime });
+          vrec.ondataavailable = (e) => { if (e.data.size > 0) videoChunksRef.current.push(e.data); };
+          videoRecorderRef.current = vrec;
+        } catch {}
+      }
+
+      // Speech recognition
       try {
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SR) {
@@ -533,7 +753,6 @@ function PenisGame({ onGameEnd, autoStart }) {
               const t = e.results[i][0].transcript.toLowerCase();
               if (/penis|peanut|peen|keen/.test(t)) {
                 if (!wordBonusRef.current) { wordBonusRef.current = true; setWordDetected(true); }
-                // Count each finalized result with a 600ms cooldown to avoid duplicates
                 const now = Date.now();
                 if (e.results[i].isFinal && now - lastWordTimeRef.current > 600) {
                   lastWordTimeRef.current = now;
@@ -550,7 +769,7 @@ function PenisGame({ onGameEnd, autoStart }) {
       setMicReady(true);
       return true;
     } catch { setMicDenied(true); return false; }
-  }, []);
+  }, [videoEnabled]);
 
   const computeRmsDb = useCallback(() => {
     if (!analyserRef.current || !pcmBufRef.current) return -60;
@@ -585,7 +804,7 @@ function PenisGame({ onGameEnd, autoStart }) {
 
     const db = computeRmsDb();
     const norm = Math.max(0, Math.min(1, (db - MIN_DB) / (MAX_DB - MIN_DB)));
-    setDbLevel(db); setRmsNorm(norm);
+    setDbLevel(db); setRmsNorm(norm); shaderIntensity = norm;
     if (db > peakDbRef.current) { peakDbRef.current = db; setPeakDb(db); }
     setBars(computeBars());
 
@@ -642,7 +861,7 @@ function PenisGame({ onGameEnd, autoStart }) {
     warnIdxRef.current = 0; lastWarnRef.current = Date.now();
     lastFlashRef.current = 0; lastPointsPush.current = 0;
     wordBonusRef.current = false; wordCountRef.current = 0; lastWordTimeRef.current = 0;
-    chunksRef.current = []; chartRef.current = [];
+    chunksRef.current = []; chartRef.current = []; videoChunksRef.current = [];
     setDuration(0); setDbLevel(-60); setPeakDb(-60); setRmsNorm(0); setScore(0);
     setWarnings([]); setOnAir(false); setResult(null);
     setWordScale(1); setListeners(0); setBars(new Array(NUM_BARS).fill(0));
@@ -650,6 +869,11 @@ function PenisGame({ onGameEnd, autoStart }) {
     if (recorderRef.current) try {
       recorderRef.current.start(500);
       setTimeout(() => { if (recorderRef.current?.state === "recording") try { recorderRef.current.stop(); } catch {} }, 8000);
+    } catch {}
+    // Start video recorder
+    if (videoRecorderRef.current) try {
+      videoRecorderRef.current.start(500);
+      setTimeout(() => { if (videoRecorderRef.current?.state === "recording") try { videoRecorderRef.current.stop(); } catch {} }, 8000);
     } catch {}
     try { speechRef.current?.start(); } catch {}
     frameRef.current = requestAnimationFrame(loop);
@@ -696,6 +920,7 @@ function PenisGame({ onGameEnd, autoStart }) {
 
   const endGame = useCallback(() => {
     gameStateRef.current = "result"; setGameState("result");
+    shaderIntensity = 0;
     setOnAir(false); setShake(0); setWordScale(1); setWordShake(0);
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
     try { speechRef.current?.stop(); } catch {}
@@ -706,14 +931,31 @@ function PenisGame({ onGameEnd, autoStart }) {
     setBest(b => Math.max(b, fs)); setSessions(s => s + 1);
     const resultData = { duration: fd, score: fs, peakDb: fp, rank: getRank(fp), listeners, wordDetected: wordBonusRef.current, wordCount: wordCountRef.current, chartData: chartSnapshot };
     setResult(resultData);
-    const finalize = (blob) => onGameEnd({ ...resultData, audioBlob: blob });
+
+    const finalize = (audioBlob, videoBlob) => onGameEnd({ ...resultData, audioBlob, videoBlob, videoMimeType: videoMimeRef.current });
+
+    // Collect video blob
+    const collectVideo = () => {
+      if (videoRecorderRef.current?.state === "recording") {
+        return new Promise(resolve => {
+          videoRecorderRef.current.onstop = () => {
+            resolve(videoChunksRef.current.length > 0 ? new Blob(videoChunksRef.current, { type: videoMimeRef.current }) : null);
+          };
+          try { videoRecorderRef.current.stop(); } catch { resolve(null); }
+        });
+      }
+      return Promise.resolve(videoChunksRef.current.length > 0 ? new Blob(videoChunksRef.current, { type: videoMimeRef.current }) : null);
+    };
+
     if (recorderRef.current?.state === "recording") {
       recorderRef.current.onstop = () => {
-        finalize(chunksRef.current.length > 0 ? new Blob(chunksRef.current, { type: "audio/webm" }) : null);
+        const audioBlob = chunksRef.current.length > 0 ? new Blob(chunksRef.current, { type: "audio/webm" }) : null;
+        collectVideo().then(videoBlob => finalize(audioBlob, videoBlob));
       };
-      try { recorderRef.current.stop(); } catch { finalize(null); }
+      try { recorderRef.current.stop(); } catch { collectVideo().then(vb => finalize(null, vb)); }
     } else {
-      finalize(chunksRef.current.length > 0 ? new Blob(chunksRef.current, { type: "audio/webm" }) : null);
+      const audioBlob = chunksRef.current.length > 0 ? new Blob(chunksRef.current, { type: "audio/webm" }) : null;
+      collectVideo().then(videoBlob => finalize(audioBlob, videoBlob));
     }
   }, [listeners, onGameEnd]);
 
@@ -745,7 +987,7 @@ function PenisGame({ onGameEnd, autoStart }) {
 
   return (
     <div style={{
-      minHeight: "100vh", background: flash ? "#ff111108" : "#08090c",
+      minHeight: "100vh", background: flash ? "rgba(255,17,17,0.03)" : "transparent",
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
       overflow: "hidden", position: "relative", userSelect: "none",
@@ -758,7 +1000,7 @@ function PenisGame({ onGameEnd, autoStart }) {
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2, boxShadow: `inset 0 0 ${100 + phase * 25}px rgba(0,0,0,0.55)` }} />
 
       {isLive && rmsNorm > 0.05 && <div style={{
-        position: "fixed", top: "35%", left: "50%",
+        position: "absolute", top: "35%", left: "50%",
         width: 250 + rmsNorm * 350, height: 250 + rmsNorm * 350,
         transform: "translate(-50%, -50%)", borderRadius: "50%",
         background: `radial-gradient(circle, ${glow} 0%, transparent 65%)`,
@@ -766,7 +1008,7 @@ function PenisGame({ onGameEnd, autoStart }) {
       }} />}
 
       <div style={{
-        position: "fixed", top: 16, left: 0, right: 0, textAlign: "center", zIndex: 20,
+        position: "absolute", top: 16, left: 0, right: 0, textAlign: "center", zIndex: 20,
       }}>
         <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 300, letterSpacing: 3, color: "#e0202066" }}>THE PENIS GAME</span>
       </div>
@@ -777,7 +1019,7 @@ function PenisGame({ onGameEnd, autoStart }) {
           position: "fixed", inset: 0, zIndex: 50,
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
-          background: "#08090c",
+          background: "rgba(8,9,12,0.92)",
         }}>
           <div style={{ textAlign: "center", animation: "fadeIn 0.5s", maxWidth: 320, padding: "0 24px" }}>
             {/* Pulsing mic icon */}
@@ -833,7 +1075,7 @@ function PenisGame({ onGameEnd, autoStart }) {
           position: "fixed", inset: 0, zIndex: 50,
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
-          background: "#08090c",
+          background: "rgba(8,9,12,0.92)",
         }}>
           <div key={countdown} style={{
             animation: "countPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -1124,6 +1366,28 @@ function PenisGame({ onGameEnd, autoStart }) {
         )}
       </div>
 
+      {/* Selfie preview bubble */}
+      {isLive && videoStreamRef.current && (
+        <video
+          ref={el => {
+            if (el && el.srcObject !== videoStreamRef.current) {
+              el.srcObject = videoStreamRef.current;
+            }
+            videoPreviewRef.current = el;
+          }}
+          autoPlay muted playsInline
+          style={{
+            position: "fixed", bottom: 80, right: 16,
+            width: 90, height: 90, borderRadius: "50%",
+            objectFit: "cover", zIndex: 40,
+            border: "2px solid #e0202044",
+            boxShadow: "0 0 20px #e0202022, 0 4px 16px rgba(0,0,0,0.5)",
+            transform: "scaleX(-1)",
+            animation: "fadeIn 0.3s",
+          }}
+        />
+      )}
+
       <div style={{
         position: "fixed", bottom: 30, left: 0, right: 0,
         display: "flex", flexDirection: "column",
@@ -1338,6 +1602,40 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
   const [uploadError, setUploadError] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
 
+  // Video
+  const videoUrlRef = useRef(null);
+  const hasVideo = !!result.videoBlob;
+  const shareText = `I just screamed "penis" and got ranked ${result.rank.em} ${result.rank.title}\n\nScore: ${result.score.toLocaleString()}\nPeak: ${(60 + result.peakDb).toFixed(0)} dB\n\nthe penis game.`;
+
+  useEffect(() => {
+    if (!result.videoBlob) return;
+    const url = URL.createObjectURL(result.videoBlob);
+    videoUrlRef.current = url;
+    return () => URL.revokeObjectURL(url);
+  }, [result.videoBlob]);
+
+  const shareVideo = async () => {
+    if (!result.videoBlob) return;
+    const ext = (result.videoMimeType || "video/webm").includes("mp4") ? "mp4" : "webm";
+    const file = new File([result.videoBlob], `penis-game.${ext}`, { type: result.videoMimeType || "video/webm" });
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "The Penis Game",
+          text: shareText,
+        });
+        return;
+      } catch {}
+    }
+    // Fallback: download
+    const url = URL.createObjectURL(result.videoBlob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `penis-game-${result.score}.${ext}`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   // Audio — handles webm Infinity duration bug
   useEffect(() => {
     if (!result.audioBlob) return;
@@ -1417,7 +1715,6 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
   };
 
   const fmtTime = (s) => isNaN(s) || !isFinite(s) ? "0:00" : `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}`;
-  const shareText = `I just screamed "penis" and got ranked ${result.rank.em} ${result.rank.title}\n\nScore: ${result.score.toLocaleString()}\nPeak: ${(60 + result.peakDb).toFixed(0)} dB\n\nthe penis game.`;
 
   // Chart SVG — auto-scaled
   const chartData = scaleChart(result.chartData || []);
@@ -1533,8 +1830,39 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
           }}>{copied ? "COPIED TO CLIPBOARD" : "CLICK TO COPY"}</div>
         </div>
 
-        {/* Audio player — compact */}
-        {result.audioBlob && (
+        {/* Video player — when video exists */}
+        {hasVideo && videoUrlRef.current && (
+          <div style={{
+            background: "#0e1018", border: "1px solid #14161f",
+            borderRadius: 8, padding: "10px 12px", marginBottom: 10,
+          }}>
+            <video
+              src={videoUrlRef.current}
+              controls playsInline
+              style={{
+                width: "100%", borderRadius: 6,
+                maxHeight: 280, objectFit: "cover",
+                transform: "scaleX(-1)",
+                background: "#000",
+              }}
+            />
+            <button
+              onClick={shareVideo}
+              className="result-play-btn"
+              style={{
+                width: "100%", marginTop: 8,
+                fontFamily: "'JetBrains Mono'", fontSize: 12, fontWeight: 500,
+                letterSpacing: 2, color: "#f0ece8", background: "#e02020",
+                border: "none", padding: "13px 0", borderRadius: 8, cursor: "pointer",
+                boxShadow: "0 4px 20px #e0202044",
+                transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.2s ease",
+              }}
+            >SHARE VIDEO</button>
+          </div>
+        )}
+
+        {/* Audio player — compact (fallback when no video) */}
+        {result.audioBlob && !hasVideo && (
           <div style={{
             background: "#0e1018", border: "1px solid #14161f",
             borderRadius: 8, padding: "10px 12px", marginBottom: 10,
@@ -1866,7 +2194,7 @@ function LeaderboardScreen({ onPlay, onHome }) {
     <div style={{
       minHeight: "100vh", display: "flex", flexDirection: "column",
       alignItems: "center", padding: "32px 16px 40px",
-      background: "#08090c", position: "relative", overflow: "hidden",
+      background: "transparent", position: "relative", overflow: "hidden",
     }}>
       {/* Grain + vignette */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 100, opacity: 0.02,
@@ -2041,3 +2369,4 @@ function LeaderboardEntry({ entry, position, isPlaying, onTogglePlay }) {
     </div>
   );
 }
+
