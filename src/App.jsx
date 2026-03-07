@@ -1605,7 +1605,7 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
   // Video
   const videoUrlRef = useRef(null);
   const hasVideo = !!result.videoBlob;
-  const shareText = `I just screamed "penis" and got ranked ${result.rank.em} ${result.rank.title}\n\nScore: ${result.score.toLocaleString()}\nPeak: ${(60 + result.peakDb).toFixed(0)} dB\n\nthe penis game.`;
+  const shareText = `I just screamed "penis" at ${(60 + result.peakDb).toFixed(0)} dB and got ranked ${result.rank.em} ${result.rank.title}\n\n${result.score.toLocaleString()} pts — beat me if you dare\n\nthe penis game 🎙️`;
 
   useEffect(() => {
     if (!result.videoBlob) return;
