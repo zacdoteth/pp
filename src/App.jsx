@@ -456,13 +456,17 @@ async function uploadScream({ score, peakDb, rank, duration, chartData, audioBlo
 
 const TAUNTS = [
   "you won't.", "say it. we dare you.",
-  "your neighbors can't hear you. probably.",
-  "press the button, coward.", "it's just a word. say it.",
+  "your neighbors can hear you. definitely.",
+  "press the button, coward.", "it's just a word.",
   "everyone's done it. your turn.", "go on. we're waiting.",
-  "the microphone is ready. are you?",
   "you've been staring for a while.",
   "the button isn't going to press itself.",
   "still thinking about it?", "we believe in you. kind of.",
+  "your boss is behind you. jk. or...",
+  "you're overthinking a penis game.",
+  "the internet is watching.",
+  "do it for the culture.",
+  "your ancestors didn't survive plagues for you to hesitate.",
 ];
 
 const WARNINGS = [
@@ -701,7 +705,7 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
                     transition: "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.4s ease, box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
                     display: "flex", flexDirection: "column",
                     alignItems: "center", justifyContent: "center",
-                    position: "relative", overflow: "hidden",
+                    overflow: "hidden",
                   }}>
                     {/* Specular highlight — that Nintendo gloss */}
                     <div style={{
@@ -747,100 +751,114 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
           }
         >
           {/* ═══ SCREEN CONTENT ═══ */}
-          {/* Title — staggered entrance */}
+
+          {/* Title */}
           <div style={{
             textAlign: "center", marginBottom: 20,
             opacity: entered ? 1 : 0,
             transform: entered ? "translateY(0) scale(1)" : "translateY(12px) scale(0.97)",
             transition: "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
           }}>
+            <div style={{
+              fontFamily: "'JetBrains Mono'", fontSize: 11,
+              fontWeight: 400, letterSpacing: 6, color: "#999",
+              marginBottom: 2, textTransform: "uppercase",
+            }}>the</div>
             <h1 style={{
               fontFamily: "'Cormorant Garamond', serif",
-              fontSize: 32,
-              fontWeight: 300, fontStyle: "italic",
-              letterSpacing: 2, whiteSpace: "nowrap",
-              color: "#e8e4e0",
-              lineHeight: 1, margin: 0,
-              textShadow: "0 0 20px rgba(224,32,32,0.1), 0 2px 12px rgba(0,0,0,0.4)",
-            }}>the penis game</h1>
+              fontSize: 72,
+              fontWeight: 600, fontStyle: "italic",
+              letterSpacing: 5,
+              color: "#f0ece8",
+              lineHeight: 0.9, margin: 0,
+              textShadow: "0 0 40px rgba(224,32,32,0.12), 0 2px 16px rgba(0,0,0,0.4)",
+            }}>penis</h1>
+            <div style={{
+              fontFamily: "'JetBrains Mono'", fontSize: 11,
+              fontWeight: 400, letterSpacing: 6, color: "#999",
+              marginTop: 4, textTransform: "uppercase",
+            }}>game</div>
           </div>
 
-          {/* HOW TO PLAY — clear, readable, structured */}
+          {/* Instructions */}
           <div style={{
             opacity: entered ? 1 : 0,
             transform: entered ? "translateY(0)" : "translateY(10px)",
-            transition: "opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s",
-            textAlign: "center", maxWidth: 300, margin: "0 auto",
+            transition: "opacity 0.7s ease 0.2s, transform 0.7s ease 0.2s",
+            background: "rgba(255,255,255,0.02)", borderRadius: 8,
+            border: "1px solid rgba(255,255,255,0.05)",
+            padding: "12px 14px", marginBottom: 12,
           }}>
-            {/* Three clear steps */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              {[
-                { icon: "🎙", text: "press the button" },
-                { icon: "🗣", text: <>scream <span style={{ color: "#e8e4e0", fontWeight: 500 }}>penis</span> as loud as you can</> },
-                { icon: "⏳", text: <>you have <span style={{ color: "#ffcc33", fontWeight: 500, fontFamily: "'JetBrains Mono'", fontSize: 12 }}>6.9</span> seconds</> },
-              ].map((step, i) => (
-                <div key={i} style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "6px 10px", borderRadius: 6,
-                  background: "rgba(255,255,255,0.015)",
-                  opacity: entered ? 1 : 0,
-                  transform: entered ? "translateY(0)" : "translateY(8px)",
-                  transition: `opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${0.3 + i * 0.1}s, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${0.3 + i * 0.1}s`,
-                }}>
-                  <span style={{ fontSize: 13, width: 20, textAlign: "center", flexShrink: 0 }}>{step.icon}</span>
-                  <span style={{
-                    fontFamily: "'DM Sans'", fontSize: 13,
-                    fontWeight: 400, color: "#888", lineHeight: 1.4,
-                    textAlign: "left",
-                  }}>{step.text}</span>
-                </div>
-              ))}
-            </div>
+            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 3, color: "#888", marginBottom: 10, fontWeight: 500 }}>HOW TO PLAY</div>
+            {[
+              { n: "1", text: <>scream <span style={{ color: "#f0ece8", fontWeight: 600 }}>PENIS</span> into your phone</> },
+              { n: "2", text: <>you have <span style={{ color: "#ffcc33", fontFamily: "'JetBrains Mono'", fontWeight: 600, fontSize: 13 }}>6.9</span> seconds</> },
+              { n: "3", text: <>press the big red button</> },
+            ].map((step, i) => (
+              <div key={i} style={{
+                display: "flex", alignItems: "baseline", gap: 10,
+                marginBottom: i < 2 ? 6 : 0,
+                opacity: entered ? 1 : 0,
+                transform: entered ? "translateY(0)" : "translateY(6px)",
+                transition: `opacity 0.4s ease ${0.3 + i * 0.08}s, transform 0.4s ease ${0.3 + i * 0.08}s`,
+              }}>
+                <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 12, color: "#555", fontWeight: 600, flexShrink: 0 }}>{step.n}</span>
+                <span style={{
+                  fontFamily: "'DM Sans'", fontSize: 14,
+                  fontWeight: 400, color: "#ccc", lineHeight: 1.5,
+                }}>{step.text}</span>
+              </div>
+            ))}
           </div>
 
           {/* Taunt text — cycling */}
           <div style={{
-            textAlign: "center", marginTop: 16, height: 16,
+            textAlign: "center", height: 20, marginBottom: 8,
             opacity: entered ? 1 : 0,
-            transition: "opacity 0.8s ease 0.6s",
+            transition: "opacity 0.8s ease 0.5s",
           }}>
             <div style={{
-              fontFamily: "'Cormorant Garamond'", fontSize: 14,
-              fontWeight: 400, fontStyle: "italic", color: "#555",
+              fontFamily: "'Cormorant Garamond'", fontSize: 15,
+              fontWeight: 400, fontStyle: "italic", color: "#777",
               opacity: tauntFade ? 1 : 0,
               transform: tauntFade ? "translateY(0)" : "translateY(-3px)",
               transition: "opacity 0.3s, transform 0.3s",
             }}>{TAUNTS[tauntIdx]}</div>
           </div>
 
-          {/* Video toggle — settings live on the screen */}
+          {/* Record toggle + NSFW */}
           <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            marginTop: 14,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
             opacity: entered ? 1 : 0,
-            transition: "opacity 0.8s ease 0.7s",
+            transition: "opacity 0.8s ease 0.6s",
+            padding: "4px 0",
           }}>
-            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#555", letterSpacing: 1 }}>
-              📹 record
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: videoEnabled ? "#e8e4e0" : "#666", letterSpacing: 1, fontWeight: 500, transition: "color 0.2s" }}>
+                REC
+              </span>
+              <button
+                onClick={() => setVideoEnabled(!videoEnabled)}
+                style={{
+                  width: 34, height: 20, borderRadius: 10, border: "none", cursor: "pointer",
+                  background: videoEnabled ? "#e02020" : "#1a1820",
+                  position: "relative", transition: "background 0.2s",
+                  outline: "none", WebkitTapHighlightColor: "transparent",
+                  boxShadow: videoEnabled ? "0 0 8px #e0202033" : "inset 0 1px 2px rgba(0,0,0,0.4)",
+                }}
+              >
+                <div style={{
+                  width: 16, height: 16, borderRadius: "50%", background: "#e8e4e0",
+                  position: "absolute", top: 2,
+                  left: videoEnabled ? 16 : 2,
+                  transition: "left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                }} />
+              </button>
+            </div>
+            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#555", letterSpacing: 2, fontWeight: 400 }}>
+              NSFW
             </span>
-            <button
-              onClick={() => setVideoEnabled(!videoEnabled)}
-              style={{
-                width: 32, height: 18, borderRadius: 9, border: "none", cursor: "pointer",
-                background: videoEnabled ? "#e02020" : "#1a1820",
-                position: "relative", transition: "background 0.2s",
-                outline: "none", WebkitTapHighlightColor: "transparent",
-                boxShadow: videoEnabled ? "0 0 8px #e0202033" : "inset 0 1px 2px rgba(0,0,0,0.4)",
-              }}
-            >
-              <div style={{
-                width: 14, height: 14, borderRadius: "50%", background: "#e8e4e0",
-                position: "absolute", top: 2,
-                left: videoEnabled ? 16 : 2,
-                transition: "left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-              }} />
-            </button>
           </div>
         </DeviceFrame>
       </div>
@@ -1175,7 +1193,12 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
     }
   }, [autoStart, startGame]);
 
+  const [screenGlitch, setScreenGlitch] = useState(false);
+
   const endGame = useCallback(() => {
+    // Screen glitch — the device "sighs" before showing results
+    setScreenGlitch(true);
+    setTimeout(() => setScreenGlitch(false), 400);
     gameStateRef.current = "result"; setGameState("result");
     shaderIntensity = 0;
     setOnAir(false); setShake(0); setWordScale(1); setWordShake(0);
@@ -1268,6 +1291,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
       <div style={{
         transform: `translate(${sx}px, ${sy}px)`,
         transition: shake > 0 ? "none" : "transform 0.2s",
+        animation: screenGlitch ? "screenGlitch 0.4s ease-out" : "none",
       }}>
         <DeviceFrame
           ledActive={isLive && rmsNorm > 0.02}
@@ -1333,6 +1357,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
                     alignItems: "center", justifyContent: "center",
                     position: "relative", overflow: "hidden",
                   }}>
+                    {/* Specular highlight */}
                     <div style={{
                       position: "absolute", top: "10%", left: "18%",
                       width: "38%", height: "20%", borderRadius: "50%",
@@ -1340,6 +1365,14 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
                       pointerEvents: "none",
                       transition: "all 0.4s ease",
                     }} />
+                    {/* Trapped star — inner core glow that intensifies with audio */}
+                    {isLive && (
+                      <div style={{
+                        position: "absolute", inset: 0, borderRadius: "50%", pointerEvents: "none",
+                        background: `radial-gradient(circle at 50% 50%, rgba(255,${180 - rmsNorm * 120},${180 - rmsNorm * 160},${0.05 + rmsNorm * 0.2}) 0%, transparent ${40 + rmsNorm * 20}%)`,
+                        transition: "background 0.06s",
+                      }} />
+                    )}
                     {isLive ? (
                       <>
                         <div style={{
@@ -1381,27 +1414,64 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
         >
           {/* ═══ SCREEN CONTENT ═══ */}
 
-          {/* Selfie preview — iPhone-style pip in top-right of screen */}
+          {/* Selfie — full screen background with dark filter */}
           {videoStreamRef.current && (
-            <video
-              ref={el => {
-                if (el && el.srcObject !== videoStreamRef.current) {
-                  el.srcObject = videoStreamRef.current;
-                }
-                videoPreviewRef.current = el;
-              }}
-              autoPlay muted playsInline
-              style={{
-                position: "absolute", top: 8, right: 8,
-                width: 56, height: 56, borderRadius: 12,
-                objectFit: "cover", zIndex: 40,
-                border: "2px solid #e0202044",
-                boxShadow: "0 0 12px #e0202022, 0 2px 8px rgba(0,0,0,0.5)",
-                transform: "scaleX(-1)",
-                animation: "fadeIn 0.3s",
-                pointerEvents: "none",
-              }}
-            />
+            <>
+              <video
+                ref={el => {
+                  if (el && el.srcObject !== videoStreamRef.current) {
+                    el.srcObject = videoStreamRef.current;
+                  }
+                  videoPreviewRef.current = el;
+                }}
+                autoPlay muted playsInline
+                style={{
+                  position: "absolute", inset: 0,
+                  width: "100%", height: "100%",
+                  objectFit: "cover", zIndex: 1,
+                  transform: "scaleX(-1)",
+                  animation: "fadeIn 0.5s",
+                  pointerEvents: "none",
+                  borderRadius: 20,
+                }}
+              />
+              {/* Dark overlay so UI stays readable */}
+              <div style={{
+                position: "absolute", inset: 0, zIndex: 2,
+                background: "linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.65) 40%, rgba(0,0,0,0.8) 100%)",
+                borderRadius: 20, pointerEvents: "none",
+              }} />
+            </>
+          )}
+
+          {/* ═══ SCREEN CRACK — appears when screaming hard ═══ */}
+          {isLive && phase >= 4 && (
+            <svg style={{
+              position: "absolute", inset: 0, zIndex: 45, pointerEvents: "none",
+              opacity: Math.min(1, (phase - 3) * 0.3) * rmsNorm,
+              transition: "opacity 0.1s",
+            }} viewBox="0 0 380 400" preserveAspectRatio="none">
+              {/* Hairline fractures radiating from center — the screen can't contain the sound */}
+              <path d="M190 200 L165 140 L155 90 L148 40" fill="none" stroke="#ffffff08" strokeWidth="0.5" />
+              <path d="M190 200 L220 150 L240 100 L260 55" fill="none" stroke="#ffffff06" strokeWidth="0.5" />
+              <path d="M190 200 L140 220 L80 235 L30 240" fill="none" stroke="#ffffff05" strokeWidth="0.5" />
+              <path d="M190 200 L230 240 L280 260 L340 265" fill="none" stroke="#ffffff06" strokeWidth="0.5" />
+              <path d="M190 200 L200 270 L195 330 L190 380" fill="none" stroke="#ffffff04" strokeWidth="0.5" />
+              {phase >= 5 && <>
+                <path d="M190 200 L150 170 L100 150 L40 145" fill="none" stroke="#ff222208" strokeWidth="0.8" />
+                <path d="M190 200 L250 190 L310 170 L360 160" fill="none" stroke="#ff222206" strokeWidth="0.8" />
+                <path d="M190 200 L170 260 L140 320 L120 370" fill="none" stroke="#ff222205" strokeWidth="0.8" />
+              </>}
+            </svg>
+          )}
+
+          {/* ═══ OBSIDIAN DEPTH — the screen has depth, not flat black ═══ */}
+          {isLive && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
+              background: `radial-gradient(ellipse at ${50 + rmsNorm * 10}% ${40 + rmsNorm * 15}%, rgba(224,32,32,${0.02 + rmsNorm * 0.04}) 0%, transparent 50%)`,
+              transition: "background 0.1s",
+            }} />
           )}
 
           {/* ═══ MIC PERMISSION OVERLAY ═══ */}
@@ -1500,6 +1570,9 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
             </div>
           )}
 
+          {/* All flow content needs to sit above video background */}
+          <div style={{ position: "relative", zIndex: 10 }}>
+
           <div style={{
             textAlign: "center", marginBottom: 4,
             opacity: isCountdown ? 0 : 1,
@@ -1515,8 +1588,9 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
             <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500, letterSpacing: 3, color: "#ff2222" }}>LIVE</span>
           </div>}
 
+          {/* ═══ "penis" text — goes WILD during screaming (secondary hero) ═══ */}
           <div style={{
-            textAlign: "center", marginBottom: isLive ? 8 : 4,
+            textAlign: "center", marginBottom: isLive ? 2 : 4,
             opacity: isCountdown || isMicPrompt ? 0 : 1,
             transform: isLive
               ? `scale(${wordScale}) translate(${wordShake > 0 ? (Math.random()-.5)*wordShake : 0}px, ${wordShake > 0 ? (Math.random()-.5)*wordShake*0.3 : 0}px)`
@@ -1525,15 +1599,17 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
           }}>
             <h1 style={{
               fontFamily: "'Cormorant Garamond', serif",
-              fontSize: isLive ? Math.min(90, 56 + rmsNorm * 35) : 64,
-              fontWeight: 300, fontStyle: "italic",
+              fontSize: isLive ? Math.min(52, 32 + rmsNorm * 22) : 64,
+              fontWeight: isLive ? Math.min(700, 300 + rmsNorm * 500) : 300,
+              fontStyle: "italic",
               letterSpacing: isLive ? 3 + rmsNorm * 16 + phase * 2 : 5,
-              color: "#f0ece8",
+              color: isLive && phase >= 5 ? "#fff" : isLive && phase >= 3 ? "#fff5f0" : "#f0ece8",
               lineHeight: 0.85, margin: 0,
               textShadow: isLive && rmsNorm > 0.08
-                ? `0 0 ${15 + rmsNorm * 40}px ${glow}, 0 4px 20px rgba(0,0,0,0.3)`
+                ? `0 0 ${15 + rmsNorm * 40}px ${glow}, 0 0 ${rmsNorm * 80}px ${glow}, 0 4px 20px rgba(0,0,0,0.3)`
                 : isIdle ? "0 4px 30px rgba(0,0,0,0.3)" : "none",
-              transition: isLive ? "font-size 0.06s, letter-spacing 0.06s" : "all 0.5s",
+              filter: isLive && rmsNorm > 0.7 ? `blur(${(rmsNorm - 0.7) * 3}px)` : "none",
+              transition: isLive ? "font-size 0.06s, letter-spacing 0.06s, font-weight 0.08s, color 0.2s" : "all 0.5s",
             }}>penis</h1>
           </div>
 
@@ -1549,11 +1625,55 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
             </div>
           )}
 
+          {/* ═══ HERO SCORE — big red number climbing in real-time (like share card) ═══ */}
+          {isLive && (
+            <div style={{ textAlign: "center", marginBottom: 0, position: "relative" }}>
+              {/* Red ambient glow behind score */}
+              <div style={{
+                position: "absolute", top: "50%", left: "50%",
+                width: 220 + rmsNorm * 80, height: 80 + rmsNorm * 30,
+                transform: "translate(-50%, -50%)",
+                background: `radial-gradient(ellipse, rgba(224,32,32,${0.04 + rmsNorm * 0.08}) 0%, transparent 70%)`,
+                pointerEvents: "none",
+              }} />
+              <div style={{
+                fontFamily: "'JetBrains Mono'", fontSize: Math.min(72, 56 + rmsNorm * 20),
+                fontWeight: 600, color: "#e02020", lineHeight: 1,
+                textShadow: `0 0 ${30 + rmsNorm * 40}px #e0202033, 0 0 ${60 + rmsNorm * 60}px #e0202018`,
+                position: "relative",
+                transition: "font-size 0.08s",
+              }}>{score.toLocaleString()}</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, letterSpacing: 5, color: "#666", marginTop: 2, fontWeight: 400, position: "relative" }}>POINTS</div>
+            </div>
+          )}
+
+          {/* ═══ dB DISPLAY — prominent, live ═══ */}
+          {isLive && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 6, marginBottom: 4 }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 400, letterSpacing: 2, color: "#44444e" }}>VOLUME</div>
+                <div style={{
+                  fontFamily: "'JetBrains Mono'", fontSize: 28, fontWeight: 200,
+                  color: rmsNorm > 0.7 ? "#ff2222" : hotAccent, letterSpacing: 1,
+                  transition: "color 0.1s",
+                }}>{dbDisp}<span style={{ fontSize: 12, color: "#44444e", marginLeft: 2 }}>dB</span></div>
+              </div>
+              <div style={{ width: 1, height: 28, background: "#1a1a22" }} />
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 400, letterSpacing: 2, color: "#44444e" }}>PEAK</div>
+                <div style={{
+                  fontFamily: "'JetBrains Mono'", fontSize: 28, fontWeight: 200,
+                  color: "#e8e4e0", letterSpacing: 1,
+                }}>{peakDisp}<span style={{ fontSize: 12, color: "#44444e", marginLeft: 2 }}>dB</span></div>
+              </div>
+            </div>
+          )}
+
           {isLive && (
             <div style={{
-              fontFamily: "'Cormorant Garamond'", fontSize: 15,
+              fontFamily: "'Cormorant Garamond'", fontSize: 14,
               fontWeight: 400, fontStyle: "italic",
-              color: "#555", textAlign: "center", marginBottom: 10, minHeight: 18,
+              color: "#444", textAlign: "center", marginBottom: 4, minHeight: 16,
             }}>
               {phase <= 0 ? "we're listening..."
                 : phase <= 1 ? "louder."
@@ -1566,22 +1686,23 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
           {isLive && wordDetected && (
             <div key={wordCount} style={{
               fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
-              color: "#22cc66", letterSpacing: 2, marginBottom: 8,
+              color: "#22cc66", letterSpacing: 2, marginBottom: 4,
               padding: "2px 8px", background: "#22cc6612", borderRadius: 3,
               animation: "popIn 0.3s ease-out", textAlign: "center",
             }}>PENIS DETECTED{wordCount > 1 ? ` ×${wordCount}` : ""}</div>
           )}
 
+          {/* ═══ FREQUENCY BARS ═══ */}
           {isLive && (
             <div style={{
               display: "flex", alignItems: "flex-end", justifyContent: "center",
-              gap: 1.5, height: 40, width: "100%",
-              marginBottom: 8, animation: "fadeIn 0.15s",
+              gap: 1.5, height: 32, width: "100%",
+              marginBottom: 4, animation: "fadeIn 0.15s",
             }}>
               {bars.map((v, i) => (
                 <div key={i} style={{
                   width: Math.max(1.5, (280 / NUM_BARS) - 1.5),
-                  height: Math.max(1, v * 40), borderRadius: 1,
+                  height: Math.max(1, v * 32), borderRadius: 1,
                   background: v > 0.7 ? "#ff2222" : v > 0.4 ? hotAccent : `${hotAccent}66`,
                   boxShadow: v > 0.6 ? `0 0 3px ${hotAccent}44` : "none",
                   transition: "height 0.04s",
@@ -1590,50 +1711,16 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
             </div>
           )}
 
-          {isLive && (
-            <div style={{
-              display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr",
-              gap: 1, width: "100%",
-              background: "#111116", borderRadius: 6,
-              overflow: "hidden", border: "1px solid #1a1a22",
-              marginBottom: 8, animation: "fadeIn 0.25s",
-            }}>
-              {[
-                { l: "VOLUME", v: dbDisp, u: "dB", c: rmsNorm > 0.7 ? "#ff2222" : hotAccent },
-                { l: "PEAK", v: peakDisp, u: "dB", c: "#e8e4e0" },
-                { l: "SCORE", v: score.toLocaleString(), u: "PTS", c: "#e8e4e0" },
-                { l: "LISTENERS", v: listeners > 0 ? listeners.toLocaleString() : "\u2014", u: "EST", c: phase >= 3 ? "#ff8844" : "#555" },
-              ].map((d, i) => (
-                <div key={i} style={{ padding: "7px 4px", background: "#0b0b10", textAlign: "center" }}>
-                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400, letterSpacing: 1.5, color: "#44444e", marginBottom: 2 }}>{d.l}</div>
-                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 15, fontWeight: 200, color: d.c, letterSpacing: 1 }}>{d.v}</div>
-                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 300, letterSpacing: 1.5, color: "#33333c", marginTop: 1 }}>{d.u}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
+          {/* ═══ LIVE CHART ═══ */}
           {isLive && chartData.length > 3 && (
-            <div style={{ width: "100%", marginBottom: 8, animation: "fadeIn 0.3s" }}>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400, color: "#33333c", letterSpacing: 2, marginBottom: 3 }}>$PENIS</div>
+            <div style={{ width: "100%", marginBottom: 4, animation: "fadeIn 0.3s" }}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400, color: "#33333c", letterSpacing: 2, marginBottom: 2 }}>$PENIS</div>
               <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block" }}>
                 <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={hotAccent} stopOpacity="0.25" /><stop offset="100%" stopColor={hotAccent} stopOpacity="0" /></linearGradient></defs>
                 {chartFill && <path d={chartFill} fill="url(#cg)" />}
                 {chartPath && <path d={chartPath} fill="none" stroke={hotAccent} strokeWidth="1.5" />}
                 {chartData.length > 0 && <circle cx={(chartData.length - 1) / (CHART_POINTS - 1) * cW} cy={cH - chartData[chartData.length - 1] * cH} r="2.5" fill={hotAccent} style={{ filter: `drop-shadow(0 0 4px ${hotAccent})` }} />}
               </svg>
-            </div>
-          )}
-
-          {isLive && peakDb > -50 && (
-            <div style={{ textAlign: "center", marginBottom: 6, animation: "fadeIn 0.3s" }}>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400, letterSpacing: 3, color: "#3a3a44" }}>SHAME LEVEL</div>
-              <div style={{
-                fontFamily: "'Cormorant Garamond'", fontSize: 20,
-                fontWeight: 600, fontStyle: "italic",
-                color: hotAccent, letterSpacing: 2, marginTop: 3,
-              }}>{rank.em} {rank.title}</div>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 200, letterSpacing: 1.5, color: "#44444e", marginTop: 2 }}>{rank.sub}</div>
             </div>
           )}
 
@@ -1648,6 +1735,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
               )}
             </div>
           )}
+          </div>{/* end flow content z-index wrapper */}
         </DeviceFrame>
       </div>
 
@@ -1680,6 +1768,18 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
         @keyframes ringPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
         @keyframes countPop { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
         @keyframes timerDrain { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 528; } }
+        @keyframes screenGlitch {
+          0% { transform: translate(0); filter: none; }
+          10% { transform: translate(-3px, 1px); filter: hue-rotate(90deg) saturate(3); }
+          20% { transform: translate(2px, -1px); filter: none; }
+          30% { transform: translate(-1px, 2px); filter: hue-rotate(-60deg) brightness(1.5); }
+          40% { transform: translate(0); filter: none; }
+          50% { transform: translate(3px, -2px) skewX(1deg); filter: saturate(0) brightness(2); }
+          60% { transform: translate(-2px, 0); filter: none; }
+          70% { transform: translate(1px, 1px); filter: hue-rotate(180deg); }
+          80% { transform: translate(0); filter: none; }
+          100% { transform: translate(0); filter: none; }
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #08090c; }
         button:focus { outline: none; }
@@ -2064,12 +2164,34 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
             </div>
           }
         >
+          {/* ═══ VIDEO REPLAY — full screen background ═══ */}
+          {hasVideo && videoUrlRef.current && (
+            <>
+              <video
+                src={videoUrlRef.current}
+                autoPlay loop muted playsInline
+                style={{
+                  position: "absolute", inset: 0,
+                  width: "100%", height: "100%",
+                  objectFit: "cover", zIndex: 1,
+                  transform: "scaleX(-1)",
+                  borderRadius: 20, pointerEvents: "none",
+                }}
+              />
+              <div style={{
+                position: "absolute", inset: 0, zIndex: 2,
+                background: "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.75) 100%)",
+                borderRadius: 20, pointerEvents: "none",
+              }} />
+            </>
+          )}
+
           {/* ═══ SCREEN CONTENT — result card ═══ */}
           <div
             onClick={copyCard}
             onMouseEnter={() => setCardHover(true)}
             onMouseLeave={() => setCardHover(false)}
-            style={{ cursor: "pointer", position: "relative" }}
+            style={{ cursor: "pointer", position: "relative", zIndex: 10 }}
           >
             {/* Copied overlay */}
             <div style={{
@@ -2086,59 +2208,60 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
               }}>COPIED!</span>
             </div>
 
-            {/* Rank + Score — combined compact */}
-            <div style={{ textAlign: "center", marginBottom: 4 }}>
-              <div style={{ fontSize: 28, lineHeight: 1 }}>{result.rank.em}</div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 300, fontStyle: "italic", color: "#f0ece8", letterSpacing: 2 }}>{result.rank.title}</div>
+            {/* Rank */}
+            <div style={{ textAlign: "center", marginBottom: hasVideo ? 4 : 12 }}>
+              <div style={{ fontSize: hasVideo ? 28 : 40, lineHeight: 1 }}>{result.rank.em}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: hasVideo ? 18 : 24, fontWeight: 300, fontStyle: "italic", color: "#f0ece8", letterSpacing: 2, marginTop: hasVideo ? 0 : 4 }}>{result.rank.title}</div>
+              {!hasVideo && <div style={{ fontFamily: "'Cormorant Garamond'", fontSize: 14, fontWeight: 400, fontStyle: "italic", color: "#555", marginTop: 4 }}>{result.rank.sub}</div>}
             </div>
 
             {/* Score — hero */}
-            <div style={{ textAlign: "center", marginBottom: 2, position: "relative" }}>
+            <div style={{ textAlign: "center", marginBottom: hasVideo ? 2 : 8, position: "relative" }}>
               <div style={{
                 position: "absolute", top: "50%", left: "50%",
-                width: 200, height: 60,
+                width: hasVideo ? 200 : 280, height: hasVideo ? 60 : 90,
                 transform: "translate(-50%, -50%)",
                 background: "radial-gradient(ellipse, rgba(224,32,32,0.06) 0%, transparent 70%)",
                 pointerEvents: "none",
               }} />
               <div style={{
-                fontFamily: "'JetBrains Mono'", fontSize: 52, fontWeight: 600,
+                fontFamily: "'JetBrains Mono'", fontSize: hasVideo ? 52 : 72, fontWeight: 600,
                 color: "#e02020", lineHeight: 1,
                 textShadow: "0 0 40px #e0202033, 0 0 80px #e0202018",
                 position: "relative",
               }}>{result.score.toLocaleString()}</div>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 5, color: "#666", marginTop: 2, fontWeight: 400, position: "relative" }}>POINTS</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: hasVideo ? 9 : 12, letterSpacing: 5, color: "#666", marginTop: hasVideo ? 2 : 6, fontWeight: 400, position: "relative" }}>POINTS</div>
             </div>
 
-            {/* Peak + Chart — inline row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-              <div style={{ textAlign: "center", flexShrink: 0 }}>
-                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 400, letterSpacing: 2, color: "#555" }}>PEAK</div>
-                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 14, fontWeight: 200, color: "#e8e4e0" }}>{Math.max(0, 60 + result.peakDb).toFixed(0)} dB</div>
-              </div>
-              {chartData.length > 3 && (
-                <div style={{ flex: 1 }}>
-                  <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block", height: 28 }}>
-                    <defs>
-                      <linearGradient id="rcg" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#e02020" stopOpacity="0.2" />
-                        <stop offset="100%" stopColor="#e02020" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    {chartFill && <path d={chartFill} fill="url(#rcg)" />}
-                    {chartPath && <path d={chartPath} fill="none" stroke="#e02020" strokeWidth="1.5" />}
-                    {chartData.length > 0 && (
-                      <circle cx={cW} cy={cH - chartData[chartData.length - 1] * cH * 0.9 - cH * 0.05} r="2.5" fill="#e02020"
-                        style={{ filter: "drop-shadow(0 0 4px #e02020)" }} />
-                    )}
-                  </svg>
-                </div>
-              )}
+            {/* Peak dB */}
+            <div style={{ textAlign: "center", marginBottom: hasVideo ? 4 : 8 }}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: hasVideo ? 8 : 10, fontWeight: 400, letterSpacing: 2, color: "#555" }}>PEAK</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: hasVideo ? 14 : 28, fontWeight: 200, color: "#e8e4e0" }}>{Math.max(0, 60 + result.peakDb).toFixed(0)} dB</div>
             </div>
+
+            {/* Chart — full width */}
+            {chartData.length > 3 && (
+              <div style={{ width: "100%", marginBottom: hasVideo ? 4 : 8 }}>
+                <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block", height: hasVideo ? 28 : 44 }}>
+                  <defs>
+                    <linearGradient id="rcg" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#e02020" stopOpacity="0.2" />
+                      <stop offset="100%" stopColor="#e02020" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  {chartFill && <path d={chartFill} fill="url(#rcg)" />}
+                  {chartPath && <path d={chartPath} fill="none" stroke="#e02020" strokeWidth="1.5" />}
+                  {chartData.length > 0 && (
+                    <circle cx={cW} cy={cH - chartData[chartData.length - 1] * cH * 0.9 - cH * 0.05} r="2.5" fill="#e02020"
+                      style={{ filter: "drop-shadow(0 0 4px #e02020)" }} />
+                  )}
+                </svg>
+              </div>
+            )}
           </div>
 
           {/* Share actions — on screen */}
-          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+          <div style={{ display: "flex", gap: 6, marginTop: hasVideo ? 6 : 12, position: "relative", zIndex: 10 }}>
             <a
               href={`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
               target="_blank" rel="noopener noreferrer"
@@ -2173,8 +2296,9 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
           {result.audioBlob && (
             <div style={{
               display: "flex", alignItems: "center", gap: 8, marginTop: 6,
-              background: "#0a0c14", borderRadius: 6, padding: "6px 10px",
-              border: "1px solid #14161f",
+              background: hasVideo ? "rgba(10,12,20,0.8)" : "#0a0c14", borderRadius: 6, padding: "6px 10px",
+              border: `1px solid ${hasVideo ? "rgba(20,22,31,0.6)" : "#14161f"}`,
+              position: "relative", zIndex: 10,
             }}>
               <button onClick={togglePlay} className="audio-play-btn" style={{
                 width: 24, height: 24, borderRadius: "50%",
@@ -2217,8 +2341,9 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
           {/* Submit to leaderboard — inside screen */}
           {supabase && !uploaded && (
             <div style={{
-              background: "#0a0c14", borderRadius: 6, padding: "8px 10px", marginTop: 8,
-              border: "1px solid #14161f",
+              background: hasVideo ? "rgba(10,12,20,0.8)" : "#0a0c14", borderRadius: 6, padding: "8px 10px", marginTop: 8,
+              border: `1px solid ${hasVideo ? "rgba(20,22,31,0.6)" : "#14161f"}`,
+              position: "relative", zIndex: 10,
             }}>
               <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 2, color: "#555", marginBottom: 6 }}>SUBMIT TO LEADERBOARD</div>
               <div style={{ display: "flex", gap: 6 }}>
@@ -2271,7 +2396,7 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
             <div style={{
               background: "#22cc6612", border: "1px solid #22cc6625",
               borderRadius: 6, padding: "8px 10px", marginTop: 8,
-              textAlign: "center",
+              textAlign: "center", position: "relative", zIndex: 10,
             }}>
               <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#22cc66", letterSpacing: 1 }}>SUBMITTED TO LEADERBOARD</div>
             </div>
@@ -2631,4 +2756,3 @@ function LeaderboardEntry({ entry, position, isPlaying, onTogglePlay }) {
     </div>
   );
 }
-
