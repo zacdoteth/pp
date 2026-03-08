@@ -78,31 +78,31 @@ void main(){
         float d=sdPP(lp);
 
         // Neon glow outline + soft halo + subtle fill
-        float outline=exp(-abs(d)*20.)*.55;
-        float glow=exp(-max(d,0.)*4.5)*.18;
-        float fill=smoothstep(.01,-.1,d)*.08;
+        float outline=exp(-abs(d)*20.)*.25;
+        float glow=exp(-max(d,0.)*4.5)*.08;
+        float fill=smoothstep(.01,-.1,d)*.03;
         float b=(outline+glow+fill)*(.35+rnd2.y*.65)*bright;
 
-        col+=vec3(.5,.025,.015)*b*sc;
+        col+=vec3(.3,.015,.01)*b*sc;
       }
     }
   }
 
   // Dark center vignette — UI lives in clean darkness
   float d=length((uv-.5)*vec2(1.,.85));
-  float vig=smoothstep(.08,.58,d);
-  col*=mix(.03,1.,vig);
-  col+=vec3(.04,.003,.002)*vig;
+  float vig=smoothstep(.12,.65,d);
+  col*=mix(.01,1.,vig);
+  col+=vec3(.02,.002,.001)*vig;
 
   // Subtle breathing
   float breath=sin(t*.25)*.05+sin(t*.13)*.03;
   col*=1.+breath*.12;
 
   // Audio — penises come alive when you scream
-  col*=1.+u_intensity*4.;
-  col+=vec3(.3,.02,.01)*u_intensity;
+  col*=1.+u_intensity*2.;
+  col+=vec3(.15,.01,.005)*u_intensity;
 
-  col*=.7+u_intensity*.4;
+  col*=.5+u_intensity*.3;
   col=col/(1.+col*.15);
   O=vec4(col,1.);
 }`;
@@ -160,6 +160,257 @@ function ShaderBackground() {
   }, []);
 
   return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }} />;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEVICE FRAME — premium Nintendo Switch-quality handheld housing
+// ═══════════════════════════════════════════════════════════════
+function DeviceFrame({ children, controls, ledColor = "#e02020", ledActive = false, ledPulse = false, statusText, onStatusClick }) {
+  // Fixed device dimensions — consistent across all screens like a real console
+  const DEVICE_W = 380; // px — the "native" width of our device
+  return (
+    <div style={{
+      position: "relative", zIndex: 10,
+      width: DEVICE_W,
+      maxWidth: "calc(100vw - 32px)",
+      // Gentle Animal Crossing perspective — like a furniture item on a table
+      transform: "perspective(1800px) rotateX(1.5deg)",
+      transition: "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+    }}>
+      {/* ── WRIST STRAP — like a Wii Remote ── */}
+      <div style={{
+        position: "absolute", top: -8, right: 28,
+        width: 22, height: 16, zIndex: 2, pointerEvents: "none",
+      }}>
+        {/* Strap loop */}
+        <div style={{
+          width: 18, height: 14,
+          border: "3px solid #3a3540",
+          borderBottom: "none",
+          borderRadius: "9px 9px 0 0",
+          boxShadow: "0 -2px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)",
+        }} />
+      </div>
+
+      {/* ── DEVICE BODY — soft, pillowy, Animal Crossing furniture ── */}
+      <div style={{
+        width: "100%",
+        // Warm dark plastic — like a black AC furniture variant
+        background: "linear-gradient(175deg, #2c2a32 0%, #242228 25%, #1e1c24 50%, #18161e 75%, #141218 100%)",
+        borderRadius: 36,
+        padding: "16px 14px 20px",
+        position: "relative", overflow: "visible", isolation: "isolate",
+        // Soft, diffused shadow — AC items have pillowy drop shadows
+        boxShadow: `
+          0 4px 0 #0e0c14,
+          0 8px 0 #0a0812,
+          0 12px 0 #060510,
+          0 16px 40px rgba(0,0,0,0.5),
+          0 32px 80px rgba(0,0,0,0.3),
+          inset 0 2px 0 rgba(255,255,255,0.08),
+          inset 0 -1px 0 rgba(0,0,0,0.3)
+        `,
+        border: "2px solid #34303c",
+      }}>
+        {/* Soft highlight — the AC "shine" on furniture */}
+        <div style={{
+          position: "absolute", top: 6, left: 24, right: 24, height: 3, zIndex: 0,
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06) 30%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.06) 70%, transparent)",
+          borderRadius: 2, pointerEvents: "none",
+        }} />
+
+        {/* Top bar — camera + speaker holes + LED */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 12, height: 18 }}>
+          {/* Speaker holes — cute rounded */}
+          <div style={{ display: "flex", gap: 6 }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: "#1a1820", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.03)" }} />)}
+          </div>
+
+          {/* Camera lens — chunky, toy-like */}
+          <div style={{
+            width: 14, height: 14, borderRadius: "50%",
+            background: "#1a1820",
+            border: "2.5px solid #38343e",
+            boxShadow: "inset 0 2px 4px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.05), 0 2px 4px rgba(0,0,0,0.3)",
+            position: "relative",
+          }}>
+            {/* Inner lens */}
+            <div style={{
+              position: "absolute", inset: 2, borderRadius: "50%",
+              background: "radial-gradient(circle at 40% 35%, #2a2840 0%, #0e0c16 60%, #080610 100%)",
+            }} />
+            {/* Lens glint — that AC sparkle */}
+            <div style={{
+              position: "absolute", top: 2, left: 3, width: 3, height: 2, borderRadius: "50%",
+              background: "rgba(255,255,255,0.25)",
+            }} />
+          </div>
+
+          {/* LED — round and friendly */}
+          <div style={{
+            width: 6, height: 6, borderRadius: "50%",
+            background: ledActive ? ledColor : "#1a1820",
+            border: `2px solid ${ledActive ? "#ff6666" : "#28242e"}`,
+            boxShadow: ledActive ? `0 0 8px ${ledColor}66, 0 0 16px ${ledColor}33` : "inset 0 1px 2px rgba(0,0,0,0.5)",
+            animation: ledPulse ? "breathe 2s ease-in-out infinite" : "none",
+            transition: "all 0.3s ease",
+          }} />
+
+          {/* Speaker holes — cute rounded */}
+          <div style={{ display: "flex", gap: 6 }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: "#1a1820", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.03)" }} />)}
+          </div>
+        </div>
+
+        {/* Screen — real LCD display feel */}
+        <div style={{
+          background: "#050408",
+          borderRadius: 20, overflow: "hidden",
+          position: "relative",
+          // Deep inset — screen recessed into plastic body
+          boxShadow: "inset 0 4px 16px rgba(0,0,0,0.7), inset 0 1px 4px rgba(0,0,0,0.9), inset 0 0 40px rgba(0,0,0,0.3), 0 -1px 0 rgba(255,255,255,0.04), 0 2px 0 rgba(0,0,0,0.2)",
+          border: "3px solid #0c0a12",
+        }}>
+          {/* Backlight glow — subtle warm edge bleed like a real LCD */}
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: 17,
+            background: "radial-gradient(ellipse at 50% 30%, rgba(60,50,80,0.06) 0%, transparent 60%)",
+            pointerEvents: "none", zIndex: 2,
+          }} />
+          {/* Scanlines — subtle horizontal lines */}
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: 17,
+            backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)",
+            pointerEvents: "none", zIndex: 3, opacity: 0.5,
+          }} />
+          {/* Screen inner vignette — darker at edges like a real display */}
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: 17,
+            boxShadow: "inset 0 0 60px rgba(0,0,0,0.4), inset 0 0 120px rgba(0,0,0,0.15)",
+            pointerEvents: "none", zIndex: 2,
+          }} />
+          {/* Glass reflection — top highlight */}
+          <div style={{
+            position: "absolute", top: 0, left: "10%", right: "10%", height: 40,
+            background: "linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 100%)",
+            pointerEvents: "none", zIndex: 4, borderRadius: "0 0 50% 50%",
+          }} />
+          <div className="device-screen-content" style={{ padding: "20px 18px 16px", height: "clamp(300px, 50vh, 400px)", position: "relative", zIndex: 5, overflowY: "auto", overflowX: "hidden" }}>
+            {children}
+          </div>
+        </div>
+
+        {/* Physical controls area */}
+        {controls && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 22, position: "relative", zIndex: 10, transform: "translateZ(0)" }}>
+            {controls}
+          </div>
+        )}
+
+        {/* Side bumpers — like Joy-Con rails but rounder */}
+        <div style={{
+          position: "absolute", left: 4, top: "35%", transform: "translateY(-50%)", pointerEvents: "none",
+          width: 5, height: 50, borderRadius: 3,
+          background: "linear-gradient(180deg, #e0202088, #e02020, #e0202088)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), 0 0 6px #e0202022, -1px 0 0 rgba(0,0,0,0.3)",
+        }} />
+        <div style={{
+          position: "absolute", right: 4, top: "35%", transform: "translateY(-50%)", pointerEvents: "none",
+          width: 5, height: 50, borderRadius: 3,
+          background: "linear-gradient(180deg, #e0202088, #e02020, #e0202088)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), 0 0 6px #e0202022, 1px 0 0 rgba(0,0,0,0.3)",
+        }} />
+
+        {/* Bottom branding — embossed, friendly */}
+        {statusText && (
+          <div onClick={onStatusClick} style={{
+            textAlign: "center", marginTop: 14,
+            fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400,
+            letterSpacing: 3,
+            color: "#3a3640",
+            textShadow: "0 1px 0 rgba(255,255,255,0.05)",
+            cursor: onStatusClick ? "pointer" : "default",
+            transition: "color 0.3s ease",
+          }}>{statusText}</div>
+        )}
+
+        {/* Soft plastic texture */}
+        <div style={{ position: "absolute", inset: 0, borderRadius: 36, pointerEvents: "none", opacity: 0.015, backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }} />
+      </div>
+
+      {/* ── DANGLING MICROPHONE — chunky, cute, AC-style ── */}
+      <div style={{
+        position: "absolute", bottom: -58, right: 32,
+        display: "flex", flexDirection: "column", alignItems: "center",
+        pointerEvents: "none",
+        animation: "micSwing 4s ease-in-out infinite",
+        transformOrigin: "top center",
+      }}>
+        {/* Cord — thick and friendly */}
+        <svg width="12" height="24" viewBox="0 0 12 24" style={{ overflow: "visible" }}>
+          <path d="M6 0 Q6 8, 4 14 Q2 20, 6 24" fill="none" stroke="#2e2a34" strokeWidth="3" strokeLinecap="round" />
+          <path d="M6 0 Q6 8, 4 14 Q2 20, 6 24" fill="none" stroke="#3a3640" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+        {/* Mic body — chunky pill shape */}
+        <div style={{
+          width: 24, height: 36, borderRadius: 12,
+          background: "linear-gradient(175deg, #38343e 0%, #2a2630 40%, #201e26 100%)",
+          border: "2.5px solid #3e3a46",
+          borderBottom: "2.5px solid #1a1820",
+          position: "relative",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.4), 0 2px 0 #141218, inset 0 2px 0 rgba(255,255,255,0.08)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          gap: 2.5,
+        }}>
+          {/* Mic grille — rounded dots instead of lines */}
+          {[0,1,2].map(row => (
+            <div key={row} style={{ display: "flex", gap: 3 }}>
+              {[0,1,2].map(col => (
+                <div key={col} style={{
+                  width: 3, height: 3, borderRadius: "50%",
+                  background: "#1a1820",
+                  boxShadow: "inset 0 1px 1px rgba(0,0,0,0.4), 0 0.5px 0 rgba(255,255,255,0.03)",
+                }} />
+              ))}
+            </div>
+          ))}
+          {/* Red recording light — chunky and cute */}
+          <div style={{
+            position: "absolute", bottom: 4,
+            width: 6, height: 6, borderRadius: "50%",
+            background: "#e02020",
+            border: "1.5px solid #ff6666",
+            boxShadow: "0 0 6px #e0202066, 0 0 12px #e0202033",
+            animation: "blink 1.5s ease-in-out infinite",
+          }} />
+        </div>
+      </div>
+
+      {/* ── LITTLE ANTENNA — like an AC walkie-talkie ── */}
+      <div style={{
+        position: "absolute", top: -20, left: 32,
+        display: "flex", flexDirection: "column", alignItems: "center",
+        pointerEvents: "none",
+      }}>
+        {/* Antenna stick */}
+        <div style={{
+          width: 4, height: 16,
+          background: "linear-gradient(180deg, #3a3640, #2a2630)",
+          borderRadius: 2,
+          boxShadow: "0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+        }} />
+        {/* Antenna ball — the classic */}
+        <div style={{
+          width: 10, height: 10, borderRadius: "50%",
+          background: "radial-gradient(circle at 40% 35%, #ff6666, #e02020, #aa1515)",
+          border: "2px solid #ff8888",
+          boxShadow: "0 2px 6px rgba(224,32,32,0.3), inset 0 1px 2px rgba(255,255,255,0.2)",
+          marginTop: -2,
+          order: -1,
+        }} />
+      </div>
+    </div>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -372,6 +623,7 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
       overflow: "hidden", position: "relative", userSelect: "none",
+      padding: "20px 16px",
     }}>
       {/* Grain */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 100, opacity: 0.02,
@@ -380,221 +632,225 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
       {/* Vignette */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2, boxShadow: "inset 0 0 120px rgba(0,0,0,0.6)" }} />
 
-      {/* ═══ CENTER CONTENT ═══ */}
       <div style={{
-        display: "flex", flexDirection: "column",
-        alignItems: "center", position: "relative", zIndex: 10,
-        width: "100%", maxWidth: 440, padding: "0 24px",
         transform: `translateY(${idleBounce}px)`,
         transition: "transform 0.3s ease-out",
       }}>
-        {/* Title — staggered entrance */}
-        <div style={{
-          textAlign: "center", marginBottom: 16,
-          opacity: entered ? 1 : 0,
-          transform: entered ? "translateY(0) scale(1)" : "translateY(20px) scale(0.95)",
-          transition: "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
-        }}>
-          <h1 style={{
-            fontFamily: "'Cormorant Garamond', serif",
-            fontSize: 42,
-            fontWeight: 300, fontStyle: "italic",
-            letterSpacing: 3, whiteSpace: "nowrap",
-            color: "#f0ece8",
-            lineHeight: 1, margin: 0,
-            textShadow: "0 2px 40px rgba(224,32,32,0.15), 0 4px 20px rgba(0,0,0,0.3)",
-          }}>the penis game</h1>
-        </div>
-
-        {/* HOW TO PLAY — clear, readable, structured */}
-        <div style={{
-          opacity: entered ? 1 : 0,
-          transform: entered ? "translateY(0)" : "translateY(16px)",
-          transition: "opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s",
-          textAlign: "center", marginBottom: 28, maxWidth: 320,
-        }}>
-          {/* Three clear steps */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 0 }}>
-            {[
-              { icon: "🎙", text: "press the button" },
-              { icon: "🗣", text: <>scream <span style={{ color: "#e8e4e0", fontWeight: 500 }}>penis</span> as loud as you can</> },
-              { icon: "⏳", text: <>you have <span style={{ color: "#ffcc33", fontWeight: 500, fontFamily: "'JetBrains Mono'", fontSize: 12 }}>6.9</span> seconds</> },
-            ].map((step, i) => (
-              <div key={i} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "8px 14px", borderRadius: 8,
-                background: "#0e101808",
+        <DeviceFrame
+          ledActive={entered}
+          ledPulse={entered}
+          statusText={supabase ? "LEADERBOARD" : undefined}
+          onStatusClick={supabase ? onLeaderboard : undefined}
+          controls={
+            <>
+              {/* ═══ THE BUTTON — big, juicy, Nintendo tactile ═══ */}
+              <div style={{
+                position: "relative", marginBottom: 16,
                 opacity: entered ? 1 : 0,
-                transform: entered ? "translateY(0)" : "translateY(10px)",
-                transition: `opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${0.3 + i * 0.1}s, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${0.3 + i * 0.1}s`,
+                transform: entered ? "translateY(0) scale(1)" : "translateY(30px) scale(0.8)",
+                transition: "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s",
               }}>
-                <span style={{ fontSize: 16, width: 24, textAlign: "center", flexShrink: 0 }}>{step.icon}</span>
-                <span style={{
-                  fontFamily: "'DM Sans'", fontSize: 14,
-                  fontWeight: 400, color: "#999", lineHeight: 1.3,
-                  textAlign: "left",
-                }}>{step.text}</span>
+                {/* Subtle glow ring */}
+                <div style={{
+                  position: "absolute", inset: btnHover ? -20 : -16, borderRadius: "50%",
+                  background: "transparent", pointerEvents: "none",
+                  boxShadow: btnHover
+                    ? `0 0 30px ${accent}18, 0 0 60px ${accent}0a`
+                    : `0 0 20px ${accent}08, 0 0 40px ${accent}04`,
+                  animation: "breathe 3s ease-in-out infinite",
+                  transition: "inset 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+                }} />
+                {/* Pulse ring */}
+                <div style={{
+                  position: "absolute", inset: btnHover ? -12 : -8, borderRadius: "50%",
+                  border: `1px solid ${btnHover ? accent + "20" : accent + "0a"}`,
+                  pointerEvents: "none",
+                  animation: "pulseRing 2.5s ease-in-out infinite",
+                  transition: "inset 0.5s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.5s ease",
+                }} />
+                {/* Button housing */}
+                <div style={{
+                  width: 176, height: 176, borderRadius: "50%",
+                  background: btnHover
+                    ? "linear-gradient(145deg, #252530, #141418)"
+                    : "linear-gradient(145deg, #1e1e28, #111116)",
+                  border: `1px solid ${btnHover ? "#2a2a3a" : "#222230"}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: btnHover
+                    ? "0 12px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.4)"
+                    : "0 8px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.4)",
+                  transition: "background 0.5s ease, border-color 0.5s ease, box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}>
+                  <button
+                    onClick={() => { haptic("nudge"); onPlay(); }}
+                    onMouseEnter={() => setBtnHover(true)}
+                    onMouseLeave={() => setBtnHover(false)}
+                    style={{
+                    width: 148, height: 148, borderRadius: "50%",
+                    border: "none", cursor: "pointer", outline: "none",
+                    position: "relative", zIndex: 50,
+                    WebkitTapHighlightColor: "transparent",
+                    background: btnHover
+                      ? "radial-gradient(circle at 40% 28%, #ff3838 0%, #d42020 30%, #a81515 60%, #7a0e0e 100%)"
+                      : "radial-gradient(circle at 38% 32%, #dd2828 0%, #b81818 35%, #8a1010 70%, #6a0c0c 100%)",
+                    boxShadow: btnHover
+                      ? "0 8px 24px rgba(224,32,32,0.2), 0 3px 8px rgba(0,0,0,0.4), inset 0 -5px 12px rgba(0,0,0,0.3), inset 0 5px 14px rgba(255,150,150,0.12)"
+                      : "0 6px 20px rgba(200,20,20,0.15), 0 2px 6px rgba(0,0,0,0.35), inset 0 -5px 12px rgba(0,0,0,0.35), inset 0 5px 12px rgba(255,130,130,0.08)",
+                    animation: btnHover ? "none" : "buttonBreathe 3s ease-in-out infinite",
+                    transform: btnHover ? "scale(1.03)" : "scale(1)",
+                    transition: "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.4s ease, box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+                    display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center",
+                    position: "relative", overflow: "hidden",
+                  }}>
+                    {/* Specular highlight — that Nintendo gloss */}
+                    <div style={{
+                      position: "absolute", top: btnHover ? "4%" : "6%", left: btnHover ? "12%" : "14%",
+                      width: btnHover ? "48%" : "44%", height: btnHover ? "28%" : "24%", borderRadius: "50%",
+                      background: btnHover
+                        ? "radial-gradient(ellipse, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 40%, transparent 70%)"
+                        : "radial-gradient(ellipse, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 40%, transparent 70%)",
+                      pointerEvents: "none",
+                      transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+                    }} />
+                    {/* Secondary highlight — bottom rim light */}
+                    <div style={{
+                      position: "absolute", bottom: "8%", left: "30%",
+                      width: "40%", height: btnHover ? "12%" : "8%", borderRadius: "50%",
+                      background: btnHover
+                        ? "radial-gradient(ellipse, rgba(255,180,180,0.12) 0%, transparent 70%)"
+                        : "radial-gradient(ellipse, rgba(255,180,180,0.06) 0%, transparent 70%)",
+                      pointerEvents: "none",
+                      transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+                    }} />
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={btnHover ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.6)"} strokeWidth="1.5" style={{
+                      marginBottom: 7,
+                      filter: btnHover ? "drop-shadow(0 1px 6px rgba(255,200,200,0.4))" : "drop-shadow(0 1px 3px rgba(0,0,0,0.3))",
+                      transition: "filter 0.4s ease, stroke 0.4s ease",
+                    }}>
+                      <rect x="9" y="2" width="6" height="12" rx="3" />
+                      <path d="M5 10a7 7 0 0 0 14 0" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                    <span style={{
+                      fontFamily: "'DM Sans'", fontSize: 13,
+                      fontWeight: 600, letterSpacing: btnHover ? 5 : 3,
+                      color: btnHover ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.8)",
+                      textShadow: btnHover ? "0 0 12px rgba(255,180,180,0.5), 0 1px 4px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.3)",
+                      transition: "color 0.4s ease, letter-spacing 0.5s cubic-bezier(0.16, 1, 0.3, 1), text-shadow 0.4s ease",
+                    }}>SAY IT</span>
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Spacer */}
-        <div style={{ height: 32 }} />
-
-        {/* ═══ THE BUTTON — big, juicy, Nintendo tactile ═══ */}
-        <div style={{
-          position: "relative", marginBottom: 24,
-          opacity: entered ? 1 : 0,
-          transform: entered ? "translateY(0) scale(1)" : "translateY(30px) scale(0.8)",
-          transition: "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s",
-        }}>
-          {/* Outermost glow ring */}
+            </>
+          }
+        >
+          {/* ═══ SCREEN CONTENT ═══ */}
+          {/* Title — staggered entrance */}
           <div style={{
-            position: "absolute", inset: btnHover ? -32 : -24, borderRadius: "50%",
-            background: "transparent",
-            boxShadow: btnHover
-              ? `0 0 80px ${accent}30, 0 0 160px ${accent}18, 0 0 240px ${accent}08`
-              : `0 0 60px ${accent}0c, 0 0 120px ${accent}06`,
-            animation: "breathe 3s ease-in-out infinite",
-            transition: "inset 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
-          }} />
-          {/* Pulse ring */}
-          <div style={{
-            position: "absolute", inset: btnHover ? -16 : -12, borderRadius: "50%",
-            border: `1.5px solid ${btnHover ? accent + "35" : accent + "15"}`,
-            animation: "pulseRing 2.5s ease-in-out infinite",
-            transition: "inset 0.5s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.5s ease",
-          }} />
-          {/* Second pulse ring (offset timing) */}
-          <div style={{
-            position: "absolute", inset: btnHover ? -28 : -20, borderRadius: "50%",
-            border: `1px solid ${btnHover ? accent + "20" : accent + "0a"}`,
-            animation: "pulseRing 3s ease-in-out infinite 0.8s",
-            transition: "inset 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s, border-color 0.5s ease 0.05s",
-          }} />
-          {/* Button housing */}
-          <div style={{
-            width: 176, height: 176, borderRadius: "50%",
-            background: btnHover
-              ? "linear-gradient(145deg, #252530, #141418)"
-              : "linear-gradient(145deg, #1e1e28, #111116)",
-            border: `1px solid ${btnHover ? "#2a2a3a" : "#222230"}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: btnHover
-              ? "0 16px 52px rgba(0,0,0,0.6), 0 0 40px rgba(224,32,32,0.08), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.4)"
-              : "0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.4)",
-            transition: "background 0.5s ease, border-color 0.5s ease, box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+            textAlign: "center", marginBottom: 20,
+            opacity: entered ? 1 : 0,
+            transform: entered ? "translateY(0) scale(1)" : "translateY(12px) scale(0.97)",
+            transition: "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
           }}>
+            <h1 style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 32,
+              fontWeight: 300, fontStyle: "italic",
+              letterSpacing: 2, whiteSpace: "nowrap",
+              color: "#e8e4e0",
+              lineHeight: 1, margin: 0,
+              textShadow: "0 0 20px rgba(224,32,32,0.1), 0 2px 12px rgba(0,0,0,0.4)",
+            }}>the penis game</h1>
+          </div>
+
+          {/* HOW TO PLAY — clear, readable, structured */}
+          <div style={{
+            opacity: entered ? 1 : 0,
+            transform: entered ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s",
+            textAlign: "center", maxWidth: 300, margin: "0 auto",
+          }}>
+            {/* Three clear steps */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              {[
+                { icon: "🎙", text: "press the button" },
+                { icon: "🗣", text: <>scream <span style={{ color: "#e8e4e0", fontWeight: 500 }}>penis</span> as loud as you can</> },
+                { icon: "⏳", text: <>you have <span style={{ color: "#ffcc33", fontWeight: 500, fontFamily: "'JetBrains Mono'", fontSize: 12 }}>6.9</span> seconds</> },
+              ].map((step, i) => (
+                <div key={i} style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "6px 10px", borderRadius: 6,
+                  background: "rgba(255,255,255,0.015)",
+                  opacity: entered ? 1 : 0,
+                  transform: entered ? "translateY(0)" : "translateY(8px)",
+                  transition: `opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${0.3 + i * 0.1}s, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${0.3 + i * 0.1}s`,
+                }}>
+                  <span style={{ fontSize: 13, width: 20, textAlign: "center", flexShrink: 0 }}>{step.icon}</span>
+                  <span style={{
+                    fontFamily: "'DM Sans'", fontSize: 13,
+                    fontWeight: 400, color: "#888", lineHeight: 1.4,
+                    textAlign: "left",
+                  }}>{step.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Taunt text — cycling */}
+          <div style={{
+            textAlign: "center", marginTop: 16, height: 16,
+            opacity: entered ? 1 : 0,
+            transition: "opacity 0.8s ease 0.6s",
+          }}>
+            <div style={{
+              fontFamily: "'Cormorant Garamond'", fontSize: 14,
+              fontWeight: 400, fontStyle: "italic", color: "#555",
+              opacity: tauntFade ? 1 : 0,
+              transform: tauntFade ? "translateY(0)" : "translateY(-3px)",
+              transition: "opacity 0.3s, transform 0.3s",
+            }}>{TAUNTS[tauntIdx]}</div>
+          </div>
+
+          {/* Video toggle — settings live on the screen */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            marginTop: 14,
+            opacity: entered ? 1 : 0,
+            transition: "opacity 0.8s ease 0.7s",
+          }}>
+            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#555", letterSpacing: 1 }}>
+              📹 record
+            </span>
             <button
-              onClick={() => { haptic("nudge"); onPlay(); }}
-              onMouseEnter={() => setBtnHover(true)}
-              onMouseLeave={() => setBtnHover(false)}
+              onClick={() => setVideoEnabled(!videoEnabled)}
               style={{
-              width: 148, height: 148, borderRadius: "50%",
-              border: "none", cursor: "pointer", outline: "none",
-              WebkitTapHighlightColor: "transparent",
-              background: btnHover
-                ? "radial-gradient(circle at 40% 28%, #ff3838 0%, #d42020 30%, #a81515 60%, #7a0e0e 100%)"
-                : "radial-gradient(circle at 38% 32%, #dd2828 0%, #b81818 35%, #8a1010 70%, #6a0c0c 100%)",
-              boxShadow: btnHover
-                ? "0 12px 40px rgba(224,32,32,0.45), 0 4px 12px rgba(0,0,0,0.5), 0 0 60px rgba(224,32,32,0.15), inset 0 -6px 14px rgba(0,0,0,0.3), inset 0 6px 18px rgba(255,150,150,0.15)"
-                : "0 8px 28px rgba(200,20,20,0.3), 0 2px 8px rgba(0,0,0,0.4), inset 0 -6px 14px rgba(0,0,0,0.35), inset 0 6px 14px rgba(255,130,130,0.1)",
-              animation: btnHover ? "none" : "buttonBreathe 3s ease-in-out infinite",
-              transform: btnHover ? "scale(1.08)" : "scale(1)",
-              transition: "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.4s ease, box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-              display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center",
-              position: "relative", overflow: "hidden",
-            }}>
-              {/* Specular highlight — that Nintendo gloss */}
+                width: 32, height: 18, borderRadius: 9, border: "none", cursor: "pointer",
+                background: videoEnabled ? "#e02020" : "#1a1820",
+                position: "relative", transition: "background 0.2s",
+                outline: "none", WebkitTapHighlightColor: "transparent",
+                boxShadow: videoEnabled ? "0 0 8px #e0202033" : "inset 0 1px 2px rgba(0,0,0,0.4)",
+              }}
+            >
               <div style={{
-                position: "absolute", top: btnHover ? "4%" : "6%", left: btnHover ? "12%" : "14%",
-                width: btnHover ? "48%" : "44%", height: btnHover ? "28%" : "24%", borderRadius: "50%",
-                background: btnHover
-                  ? "radial-gradient(ellipse, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 40%, transparent 70%)"
-                  : "radial-gradient(ellipse, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 40%, transparent 70%)",
-                pointerEvents: "none",
-                transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+                width: 14, height: 14, borderRadius: "50%", background: "#e8e4e0",
+                position: "absolute", top: 2,
+                left: videoEnabled ? 16 : 2,
+                transition: "left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
               }} />
-              {/* Secondary highlight — bottom rim light */}
-              <div style={{
-                position: "absolute", bottom: "8%", left: "30%",
-                width: "40%", height: btnHover ? "12%" : "8%", borderRadius: "50%",
-                background: btnHover
-                  ? "radial-gradient(ellipse, rgba(255,180,180,0.12) 0%, transparent 70%)"
-                  : "radial-gradient(ellipse, rgba(255,180,180,0.06) 0%, transparent 70%)",
-                pointerEvents: "none",
-                transition: "all 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-              }} />
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={btnHover ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.6)"} strokeWidth="1.5" style={{
-                marginBottom: 7,
-                filter: btnHover ? "drop-shadow(0 1px 6px rgba(255,200,200,0.4))" : "drop-shadow(0 1px 3px rgba(0,0,0,0.3))",
-                transition: "filter 0.4s ease, stroke 0.4s ease",
-              }}>
-                <rect x="9" y="2" width="6" height="12" rx="3" />
-                <path d="M5 10a7 7 0 0 0 14 0" />
-                <line x1="12" y1="17" x2="12" y2="21" />
-              </svg>
-              <span style={{
-                fontFamily: "'DM Sans'", fontSize: 13,
-                fontWeight: 600, letterSpacing: btnHover ? 5 : 3,
-                color: btnHover ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.8)",
-                textShadow: btnHover ? "0 0 12px rgba(255,180,180,0.5), 0 1px 4px rgba(0,0,0,0.3)" : "0 1px 4px rgba(0,0,0,0.3)",
-                transition: "color 0.4s ease, letter-spacing 0.5s cubic-bezier(0.16, 1, 0.3, 1), text-shadow 0.4s ease",
-              }}>SAY IT</span>
             </button>
           </div>
-        </div>
-
-        {/* Video toggle */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-          opacity: entered ? 1 : 0,
-          transition: "opacity 0.8s ease 0.6s",
-        }}>
-          <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#444", letterSpacing: 1 }}>
-            📹 record yourself
-          </span>
-          <button
-            onClick={() => setVideoEnabled(!videoEnabled)}
-            style={{
-              width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer",
-              background: videoEnabled ? "#e02020" : "#222",
-              position: "relative", transition: "background 0.2s",
-              outline: "none", WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            <div style={{
-              width: 16, height: 16, borderRadius: "50%", background: "#f0ece8",
-              position: "absolute", top: 2,
-              left: videoEnabled ? 18 : 2,
-              transition: "left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-            }} />
-          </button>
-        </div>
+        </DeviceFrame>
       </div>
-
-      {/* ═══ BOTTOM ═══ */}
-      {supabase && <div style={{
-        position: "fixed", bottom: 20, left: 0, right: 0,
-        textAlign: "center", zIndex: 20,
-        opacity: entered ? 1 : 0,
-        transition: "opacity 1s ease 1s",
-      }}>
-        <button onClick={onLeaderboard} className="leaderboard-link" style={{
-          fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400,
-          letterSpacing: 2, color: "#444", background: "none",
-          border: "none", cursor: "pointer",
-          transition: "color 0.3s ease, letter-spacing 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-        }}>LEADERBOARD</button>
-      </div>}
 
       <style>{`
         @keyframes breathe { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.06); } }
         @keyframes pulseRing { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.04); } }
         @keyframes buttonBreathe { 0%, 100% { transform: scale(1); box-shadow: 0 8px 28px rgba(200,20,20,0.3), 0 2px 8px rgba(0,0,0,0.4), inset 0 -6px 14px rgba(0,0,0,0.35), inset 0 6px 14px rgba(255,130,130,0.1); } 50% { transform: scale(1.04); box-shadow: 0 10px 36px rgba(200,20,20,0.4), 0 2px 8px rgba(0,0,0,0.4), inset 0 -6px 14px rgba(0,0,0,0.35), inset 0 6px 14px rgba(255,130,130,0.12); } }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        @keyframes micSwing { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes popIn { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -602,8 +858,9 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
         button:focus { outline: none; }
         button:active { transform: scale(0.93) !important; transition: transform 0.06s !important; }
         .leaderboard-link:hover { color: #888 !important; letter-spacing: 4px !important; }
-        ::-webkit-scrollbar { width: 2px; }
-        ::-webkit-scrollbar-thumb { background: #222; }
+        ::-webkit-scrollbar { width: 0px; }
+        .device-screen-content { scrollbar-width: none; -ms-overflow-style: none; }
+        .device-screen-content::-webkit-scrollbar { display: none; }
       `}</style>
     </div>
   );
@@ -992,6 +1249,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
       alignItems: "center", justifyContent: "center",
       overflow: "hidden", position: "relative", userSelect: "none",
       transition: flash ? "none" : "background 0.5s",
+      padding: "20px 16px",
     }}>
       {/* Grain */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 100, opacity: 0.02,
@@ -1008,362 +1266,365 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
       }} />}
 
       <div style={{
-        position: "absolute", top: 16, left: 0, right: 0, textAlign: "center", zIndex: 20,
-      }}>
-        <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 300, letterSpacing: 3, color: "#e0202066" }}>THE PENIS GAME</span>
-      </div>
-
-      {/* ═══ MIC PERMISSION OVERLAY ═══ */}
-      {isMicPrompt && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 50,
-          display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          background: "rgba(8,9,12,0.92)",
-        }}>
-          <div style={{ textAlign: "center", animation: "fadeIn 0.5s", maxWidth: 320, padding: "0 24px" }}>
-            {/* Pulsing mic icon */}
-            <div style={{
-              width: 80, height: 80, borderRadius: "50%",
-              background: "radial-gradient(circle at 40% 34%, #1e1e28 0%, #111116 100%)",
-              border: "1px solid #222230",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 24px",
-              boxShadow: "0 0 40px #e0202015, 0 8px 30px rgba(0,0,0,0.4)",
-              animation: "breathe 2.5s ease-in-out infinite",
-            }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#e02020" strokeWidth="1.5" style={{ filter: "drop-shadow(0 0 8px #e0202044)" }}>
-                <rect x="9" y="2" width="6" height="12" rx="3" />
-                <path d="M5 10a7 7 0 0 0 14 0" />
-                <line x1="12" y1="17" x2="12" y2="21" />
-              </svg>
-            </div>
-
-            <h2 style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: 28, fontWeight: 300, fontStyle: "italic",
-              color: "#f0ece8", letterSpacing: 2, margin: "0 0 12px",
-            }}>we need your mic</h2>
-
-            <p style={{
-              fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 400,
-              color: "#555", lineHeight: 1.6, margin: "0 0 8px",
-            }}>
-              the penis game requires audio to measure your courage.
-            </p>
-
-            <p style={{
-              fontFamily: "'Cormorant Garamond'", fontSize: 15,
-              fontWeight: 400, fontStyle: "italic",
-              color: "#333", margin: 0,
-            }}>please allow microphone access to continue.</p>
-
-            {/* Subtle animated dots */}
-            <div style={{
-              marginTop: 28,
-              fontFamily: "'JetBrains Mono'", fontSize: 8,
-              fontWeight: 300, letterSpacing: 4, color: "#222",
-              animation: "blink 1.5s ease-in-out infinite",
-            }}>WAITING FOR PERMISSION</div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ COUNTDOWN OVERLAY ═══ */}
-      {isCountdown && countdown !== null && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 50,
-          display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          background: "rgba(8,9,12,0.92)",
-        }}>
-          <div key={countdown} style={{
-            animation: "countPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
-            textAlign: "center",
-          }}>
-            {typeof countdown === "number" ? (
-              <div style={{
-                fontFamily: "'JetBrains Mono'", fontSize: 140, fontWeight: 200,
-                color: countdown === 1 ? "#e02020" : "#f0ece8",
-                lineHeight: 1, letterSpacing: -4,
-                textShadow: countdown === 1
-                  ? "0 0 60px #e0202044, 0 0 120px #e0202022"
-                  : "0 4px 30px rgba(0,0,0,0.3)",
-              }}>{countdown}</div>
-            ) : (
-              <div style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                fontSize: 64, fontWeight: 300, fontStyle: "italic",
-                color: "#e02020", letterSpacing: 6,
-                textShadow: "0 0 40px #e0202044, 0 0 80px #e0202022",
-              }}>{countdown}</div>
-            )}
-            <div style={{
-              fontFamily: "'Cormorant Garamond'", fontSize: 16,
-              fontWeight: 300, fontStyle: "italic",
-              color: "#333", marginTop: 16,
-              opacity: countdown === 3 ? 1 : 0,
-              transition: "opacity 0.3s",
-            }}>get ready to scream</div>
-          </div>
-        </div>
-      )}
-
-      <div style={{
         transform: `translate(${sx}px, ${sy}px)`,
         transition: shake > 0 ? "none" : "transform 0.2s",
-        display: "flex", flexDirection: "column",
-        alignItems: "center", position: "relative", zIndex: 10,
-        width: "100%", maxWidth: 440, padding: "0 24px",
-        opacity: isCountdown ? 0 : 1,
       }}>
+        <DeviceFrame
+          ledActive={isLive && rmsNorm > 0.02}
+          ledPulse={isLive}
+          ledColor={isLive && rmsNorm > 0.5 ? "#ff2222" : "#e02020"}
+          statusText={isLive ? (phase >= 4 ? "YOUR DIGNITY LEFT THE BUILDING" : "RECORDING") : "AN EXERCISE IN SHAMELESSNESS"}
+          controls={
+            <div style={{ position: "relative", opacity: isCountdown || isMicPrompt ? 0.3 : 1, transition: "opacity 0.3s", pointerEvents: isCountdown || isMicPrompt ? "none" : "auto" }}>
+                {isIdle && <div style={{
+                  position: "absolute", inset: -16, borderRadius: "50%",
+                  background: "transparent", pointerEvents: "none",
+                  boxShadow: `0 0 40px ${accent}10, 0 0 80px ${accent}06`,
+                  animation: "breathe 3s ease-in-out infinite",
+                }} />}
+                {isIdle && <div style={{
+                  position: "absolute", inset: -8, borderRadius: "50%",
+                  border: `1.5px solid ${accent}18`, pointerEvents: "none",
+                  animation: "pulseRing 2.5s ease-in-out infinite",
+                }} />}
+                {isLive && rmsNorm > 0.05 && <div style={{
+                  position: "absolute", inset: -10, borderRadius: "50%", pointerEvents: "none",
+                  border: `1.5px solid ${hotAccent}${Math.min(60, Math.floor(rmsNorm * 80)).toString(16).padStart(2, '0')}`,
+                  boxShadow: `0 0 ${14 + rmsNorm * 30}px ${glow}`,
+                }} />}
+                {isLive && (
+                  <svg width="180" height="180" style={{ position: "absolute", inset: -10, transform: "rotate(-90deg)", pointerEvents: "none" }}>
+                    <circle cx="90" cy="90" r="84" fill="none"
+                      stroke="#1a1c28" strokeWidth="2" />
+                    <circle cx="90" cy="90" r="84" fill="none"
+                      stroke={timeLeft < 2 ? "#ff4444" : hotAccent + "66"}
+                      strokeWidth="2"
+                      strokeDasharray="528 528"
+                      strokeDashoffset="0"
+                      strokeLinecap="round"
+                      style={{
+                        animation: `timerDrain ${GAME_DURATION}s linear forwards`,
+                      }} />
+                  </svg>
+                )}
+                <div style={{
+                  width: 160, height: 160, borderRadius: "50%",
+                  background: "linear-gradient(145deg, #1c1c24, #111116)",
+                  border: `1px solid ${isLive && rmsNorm > 0.1 ? hotAccent + "25" : "#1e1e26"}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: isLive
+                    ? `0 0 ${25 + rmsNorm * 25}px ${glow}, 0 8px 30px rgba(0,0,0,0.5)`
+                    : "0 8px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.02)",
+                  transition: "box-shadow 0.2s",
+                }}>
+                  <button onClick={isLive ? endGame : startGame} className="game-btn" style={{
+                    width: 136, height: 136, borderRadius: "50%",
+                    border: "none", cursor: "pointer", outline: "none",
+                    WebkitTapHighlightColor: "transparent",
+                    background: isLive
+                      ? `radial-gradient(circle at 40% 34%, ${rmsNorm > 0.5 ? '#ee2020' : '#cc2424'} 0%, #a01818 40%, #801010 100%)`
+                      : "radial-gradient(circle at 40% 34%, #cc2020 0%, #9a1515 40%, #701010 100%)",
+                    boxShadow: isLive
+                      ? `inset 0 4px 16px rgba(0,0,0,0.5), 0 0 ${rmsNorm * 16}px ${hotAccent}18`
+                      : "0 6px 24px rgba(180,20,20,0.25), inset 0 -4px 10px rgba(0,0,0,0.3), inset 0 4px 10px rgba(255,120,120,0.08)",
+                    animation: isIdle ? "buttonBreathe 3s ease-in-out infinite" : "none",
+                    transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease, box-shadow 0.4s ease",
+                    display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center",
+                    position: "relative", overflow: "hidden",
+                  }}>
+                    <div style={{
+                      position: "absolute", top: "10%", left: "18%",
+                      width: "38%", height: "20%", borderRadius: "50%",
+                      background: "radial-gradient(ellipse, rgba(255,255,255,0.12) 0%, transparent 70%)",
+                      pointerEvents: "none",
+                      transition: "all 0.4s ease",
+                    }} />
+                    {isLive ? (
+                      <>
+                        <div style={{
+                          fontFamily: "'JetBrains Mono'", fontSize: 34,
+                          fontWeight: 200, color: timeLeft < 2 ? "#ff4444" : "#fff",
+                          letterSpacing: 2, lineHeight: 1,
+                          textShadow: `0 0 ${8 + rmsNorm * 12}px rgba(255,255,255,${0.1 + rmsNorm * 0.15})`,
+                          transition: "color 0.3s ease",
+                        }}>{timeLeft.toFixed(1)}</div>
+                        <div style={{
+                          fontFamily: "'JetBrains Mono'", fontSize: 9,
+                          fontWeight: 300, letterSpacing: 2,
+                          color: "rgba(255,255,255,0.4)", marginTop: 3,
+                          transition: "color 0.3s ease",
+                        }}>{timeLeft < 2 ? "GO GO GO" : "SEC LEFT"}</div>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" style={{
+                          marginBottom: 6,
+                          transition: "filter 0.3s ease",
+                        }}>
+                          <rect x="9" y="2" width="6" height="12" rx="3" />
+                          <path d="M5 10a7 7 0 0 0 14 0" />
+                          <line x1="12" y1="17" x2="12" y2="21" />
+                        </svg>
+                        <span style={{
+                          fontFamily: "'DM Sans'", fontSize: 12,
+                          fontWeight: 500, letterSpacing: 2,
+                          color: "rgba(255,255,255,0.7)",
+                          transition: "color 0.3s ease, letter-spacing 0.4s cubic-bezier(0.16, 1, 0.3, 1), text-shadow 0.3s ease",
+                        }}>SAY IT</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+          }
+        >
+          {/* ═══ SCREEN CONTENT ═══ */}
 
-        {onAir && <div style={{
-          position: "absolute", top: -40, right: 20,
-          display: "flex", alignItems: "center", gap: 6, animation: "fadeIn 0.3s",
-        }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ff2222",
-            boxShadow: "0 0 6px #ff2222, 0 0 14px #ff222244", animation: "blink 1s infinite" }} />
-          <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 500, letterSpacing: 3, color: "#ff2222" }}>LIVE</span>
-        </div>}
+          {/* ═══ MIC PERMISSION OVERLAY ═══ */}
+          {isMicPrompt && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 50,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              borderRadius: 20,
+            }}>
+              <div style={{ textAlign: "center", animation: "fadeIn 0.5s", maxWidth: 320, padding: "0 24px" }}>
+                {/* Pulsing mic icon */}
+                <div style={{
+                  width: 80, height: 80, borderRadius: "50%",
+                  background: "radial-gradient(circle at 40% 34%, #1e1e28 0%, #111116 100%)",
+                  border: "1px solid #222230",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 24px",
+                  boxShadow: "0 0 40px #e0202015, 0 8px 30px rgba(0,0,0,0.4)",
+                  animation: "breathe 2.5s ease-in-out infinite",
+                }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#e02020" strokeWidth="1.5" style={{ filter: "drop-shadow(0 0 8px #e0202044)" }}>
+                    <rect x="9" y="2" width="6" height="12" rx="3" />
+                    <path d="M5 10a7 7 0 0 0 14 0" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                </div>
 
-        <div style={{
-          textAlign: "center", marginBottom: isLive ? 8 : 4,
-          transform: isLive
-            ? `scale(${wordScale}) translate(${wordShake > 0 ? (Math.random()-.5)*wordShake : 0}px, ${wordShake > 0 ? (Math.random()-.5)*wordShake*0.3 : 0}px)`
-            : isIdle ? `translateY(${idleBounce}px)` : "none",
-          transition: isLive && wordShake > 0 ? "none" : "transform 0.3s ease-out",
-        }}>
-          <h1 style={{
-            fontFamily: "'Cormorant Garamond', serif",
-            fontSize: isLive ? Math.min(130, 76 + rmsNorm * 55) : 84,
-            fontWeight: 300, fontStyle: "italic",
-            letterSpacing: isLive ? 3 + rmsNorm * 16 + phase * 2 : 5,
-            color: "#f0ece8",
-            lineHeight: 0.85, margin: 0,
-            textShadow: isLive && rmsNorm > 0.08
-              ? `0 0 ${15 + rmsNorm * 40}px ${glow}, 0 4px 20px rgba(0,0,0,0.3)`
-              : isIdle ? "0 4px 30px rgba(0,0,0,0.3)" : "none",
-            transition: isLive ? "font-size 0.06s, letter-spacing 0.06s" : "all 0.5s",
-          }}>penis</h1>
-        </div>
+                <h2 style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  fontSize: 28, fontWeight: 300, fontStyle: "italic",
+                  color: "#f0ece8", letterSpacing: 2, margin: "0 0 12px",
+                }}>we need your mic</h2>
 
-        {isIdle && (
-          <div style={{ textAlign: "center", height: 20, marginBottom: 28 }}>
+                <p style={{
+                  fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 400,
+                  color: "#555", lineHeight: 1.6, margin: "0 0 8px",
+                }}>
+                  the penis game requires audio to measure your courage.
+                </p>
+
+                <p style={{
+                  fontFamily: "'Cormorant Garamond'", fontSize: 15,
+                  fontWeight: 400, fontStyle: "italic",
+                  color: "#333", margin: 0,
+                }}>please allow microphone access to continue.</p>
+
+                {/* Subtle animated dots */}
+                <div style={{
+                  marginTop: 28,
+                  fontFamily: "'JetBrains Mono'", fontSize: 10,
+                  fontWeight: 300, letterSpacing: 3, color: "#333",
+                  animation: "blink 1.5s ease-in-out infinite",
+                }}>WAITING FOR PERMISSION</div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ COUNTDOWN OVERLAY ═══ */}
+          {isCountdown && countdown !== null && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 50,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              borderRadius: 20,
+            }}>
+              <div key={countdown} style={{
+                animation: "countPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                textAlign: "center",
+              }}>
+                {typeof countdown === "number" ? (
+                  <div style={{
+                    fontFamily: "'JetBrains Mono'", fontSize: 140, fontWeight: 200,
+                    color: countdown === 1 ? "#e02020" : "#f0ece8",
+                    lineHeight: 1, letterSpacing: -4,
+                    textShadow: countdown === 1
+                      ? "0 0 60px #e0202044, 0 0 120px #e0202022"
+                      : "0 4px 30px rgba(0,0,0,0.3)",
+                  }}>{countdown}</div>
+                ) : (
+                  <div style={{
+                    fontFamily: "'Cormorant Garamond', serif",
+                    fontSize: 64, fontWeight: 300, fontStyle: "italic",
+                    color: "#e02020", letterSpacing: 6,
+                    textShadow: "0 0 40px #e0202044, 0 0 80px #e0202022",
+                  }}>{countdown}</div>
+                )}
+                <div style={{
+                  fontFamily: "'Cormorant Garamond'", fontSize: 16,
+                  fontWeight: 300, fontStyle: "italic",
+                  color: "#333", marginTop: 16,
+                  opacity: countdown === 3 ? 1 : 0,
+                  transition: "opacity 0.3s",
+                }}>get ready to scream</div>
+              </div>
+            </div>
+          )}
+
+          <div style={{
+            textAlign: "center", marginBottom: 4,
+            opacity: isCountdown ? 0 : 1,
+          }}>
+            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 300, letterSpacing: 3, color: "#e0202066" }}>THE PENIS GAME</span>
+          </div>
+
+          {onAir && <div style={{
+            display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, animation: "fadeIn 0.3s", marginBottom: 4,
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ff2222",
+              boxShadow: "0 0 6px #ff2222, 0 0 14px #ff222244", animation: "blink 1s infinite" }} />
+            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500, letterSpacing: 3, color: "#ff2222" }}>LIVE</span>
+          </div>}
+
+          <div style={{
+            textAlign: "center", marginBottom: isLive ? 8 : 4,
+            transform: isLive
+              ? `scale(${wordScale}) translate(${wordShake > 0 ? (Math.random()-.5)*wordShake : 0}px, ${wordShake > 0 ? (Math.random()-.5)*wordShake*0.3 : 0}px)`
+              : isIdle ? `translateY(${idleBounce}px)` : "none",
+            transition: isLive && wordShake > 0 ? "none" : "transform 0.3s ease-out",
+          }}>
+            <h1 style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: isLive ? Math.min(90, 56 + rmsNorm * 35) : 64,
+              fontWeight: 300, fontStyle: "italic",
+              letterSpacing: isLive ? 3 + rmsNorm * 16 + phase * 2 : 5,
+              color: "#f0ece8",
+              lineHeight: 0.85, margin: 0,
+              textShadow: isLive && rmsNorm > 0.08
+                ? `0 0 ${15 + rmsNorm * 40}px ${glow}, 0 4px 20px rgba(0,0,0,0.3)`
+                : isIdle ? "0 4px 30px rgba(0,0,0,0.3)" : "none",
+              transition: isLive ? "font-size 0.06s, letter-spacing 0.06s" : "all 0.5s",
+            }}>penis</h1>
+          </div>
+
+          {isIdle && (
+            <div style={{ textAlign: "center", height: 20, marginBottom: 8 }}>
+              <div style={{
+                fontFamily: "'Cormorant Garamond'", fontSize: 15,
+                fontWeight: 400, fontStyle: "italic", color: "#666",
+                opacity: tauntFade ? 1 : 0,
+                transform: tauntFade ? "translateY(0)" : "translateY(-4px)",
+                transition: "opacity 0.3s, transform 0.3s",
+              }}>{TAUNTS[tauntIdx]}</div>
+            </div>
+          )}
+
+          {isLive && (
             <div style={{
               fontFamily: "'Cormorant Garamond'", fontSize: 15,
-              fontWeight: 400, fontStyle: "italic", color: "#666",
-              opacity: tauntFade ? 1 : 0,
-              transform: tauntFade ? "translateY(0)" : "translateY(-4px)",
-              transition: "opacity 0.3s, transform 0.3s",
-            }}>{TAUNTS[tauntIdx]}</div>
-          </div>
-        )}
-
-        {isLive && (
-          <div style={{
-            fontFamily: "'Cormorant Garamond'", fontSize: 14,
-            fontWeight: 400, fontStyle: "italic",
-            color: "#555", textAlign: "center", marginBottom: 10, minHeight: 18,
-          }}>
-            {phase <= 0 ? "we're listening..."
-              : phase <= 1 ? "louder."
-              : phase <= 3 ? "LOUDER."
-              : phase <= 5 ? "WE CAN STILL HEAR YOUR SHAME."
-              : "TRANSCENDENT."}
-          </div>
-        )}
-
-        {isLive && wordDetected && (
-          <div key={wordCount} style={{
-            fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 500,
-            color: "#22cc66", letterSpacing: 2, marginBottom: 8,
-            padding: "2px 8px", background: "#22cc6612", borderRadius: 3,
-            animation: "popIn 0.3s ease-out",
-          }}>PENIS DETECTED{wordCount > 1 ? ` ×${wordCount}` : ""} ✓</div>
-        )}
-
-        {isLive && (
-          <div style={{
-            display: "flex", alignItems: "flex-end", justifyContent: "center",
-            gap: 1.5, height: 52, width: "100%",
-            marginBottom: 12, animation: "fadeIn 0.15s",
-          }}>
-            {bars.map((v, i) => (
-              <div key={i} style={{
-                width: Math.max(1.5, (320 / NUM_BARS) - 1.5),
-                height: Math.max(1, v * 52), borderRadius: 1,
-                background: v > 0.7 ? "#ff2222" : v > 0.4 ? hotAccent : `${hotAccent}66`,
-                boxShadow: v > 0.6 ? `0 0 3px ${hotAccent}44` : "none",
-                transition: "height 0.04s",
-              }} />
-            ))}
-          </div>
-        )}
-
-        {!isResult && !isCountdown && (
-          <div style={{ position: "relative", marginBottom: isLive ? 12 : 20 }}>
-            {isIdle && <div style={{
-              position: "absolute", inset: -16, borderRadius: "50%",
-              background: "transparent",
-              boxShadow: `0 0 40px ${accent}10, 0 0 80px ${accent}06`,
-              animation: "breathe 3s ease-in-out infinite",
-            }} />}
-            {isIdle && <div style={{
-              position: "absolute", inset: -8, borderRadius: "50%",
-              border: `1.5px solid ${accent}18`,
-              animation: "pulseRing 2.5s ease-in-out infinite",
-            }} />}
-            {isLive && rmsNorm > 0.05 && <div style={{
-              position: "absolute", inset: -10, borderRadius: "50%",
-              border: `1.5px solid ${hotAccent}${Math.min(60, Math.floor(rmsNorm * 80)).toString(16).padStart(2, '0')}`,
-              boxShadow: `0 0 ${14 + rmsNorm * 30}px ${glow}`,
-            }} />}
-            {isLive && (
-              <svg width="180" height="180" style={{ position: "absolute", inset: -10, transform: "rotate(-90deg)" }}>
-                <circle cx="90" cy="90" r="84" fill="none"
-                  stroke="#1a1c28" strokeWidth="2" />
-                <circle cx="90" cy="90" r="84" fill="none"
-                  stroke={timeLeft < 2 ? "#ff4444" : hotAccent + "66"}
-                  strokeWidth="2"
-                  strokeDasharray="528 528"
-                  strokeDashoffset="0"
-                  strokeLinecap="round"
-                  style={{
-                    animation: `timerDrain ${GAME_DURATION}s linear forwards`,
-                  }} />
-              </svg>
-            )}
-            <div style={{
-              width: 160, height: 160, borderRadius: "50%",
-              background: "linear-gradient(145deg, #1c1c24, #111116)",
-              border: `1px solid ${isLive && rmsNorm > 0.1 ? hotAccent + "25" : "#1e1e26"}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: isLive
-                ? `0 0 ${25 + rmsNorm * 25}px ${glow}, 0 8px 30px rgba(0,0,0,0.5)`
-                : "0 8px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.02)",
-              transition: "box-shadow 0.2s",
+              fontWeight: 400, fontStyle: "italic",
+              color: "#555", textAlign: "center", marginBottom: 10, minHeight: 18,
             }}>
-              <button onClick={isLive ? endGame : startGame} className="game-btn" style={{
-                width: 136, height: 136, borderRadius: "50%",
-                border: "none", cursor: "pointer", outline: "none",
-                WebkitTapHighlightColor: "transparent",
-                background: isLive
-                  ? `radial-gradient(circle at 40% 34%, ${rmsNorm > 0.5 ? '#ee2020' : '#cc2424'} 0%, #a01818 40%, #801010 100%)`
-                  : "radial-gradient(circle at 40% 34%, #cc2020 0%, #9a1515 40%, #701010 100%)",
-                boxShadow: isLive
-                  ? `inset 0 4px 16px rgba(0,0,0,0.5), 0 0 ${rmsNorm * 16}px ${hotAccent}18`
-                  : "0 6px 24px rgba(180,20,20,0.25), inset 0 -4px 10px rgba(0,0,0,0.3), inset 0 4px 10px rgba(255,120,120,0.08)",
-                animation: isIdle ? "buttonBreathe 3s ease-in-out infinite" : "none",
-                transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease, box-shadow 0.4s ease",
-                display: "flex", flexDirection: "column",
-                alignItems: "center", justifyContent: "center",
-                position: "relative", overflow: "hidden",
-              }}>
-                <div style={{
-                  position: "absolute", top: "10%", left: "18%",
-                  width: "38%", height: "20%", borderRadius: "50%",
-                  background: "radial-gradient(ellipse, rgba(255,255,255,0.12) 0%, transparent 70%)",
-                  pointerEvents: "none",
-                  transition: "all 0.4s ease",
-                }} />
-                {isLive ? (
-                  <>
-                    <div style={{
-                      fontFamily: "'JetBrains Mono'", fontSize: 34,
-                      fontWeight: 200, color: timeLeft < 2 ? "#ff4444" : "#fff",
-                      letterSpacing: 2, lineHeight: 1,
-                      textShadow: `0 0 ${8 + rmsNorm * 12}px rgba(255,255,255,${0.1 + rmsNorm * 0.15})`,
-                      transition: "color 0.3s ease",
-                    }}>{timeLeft.toFixed(1)}</div>
-                    <div style={{
-                      fontFamily: "'JetBrains Mono'", fontSize: 7,
-                      fontWeight: 300, letterSpacing: 3,
-                      color: "rgba(255,255,255,0.35)", marginTop: 3,
-                      transition: "color 0.3s ease",
-                    }}>{timeLeft < 2 ? "GO GO GO" : "SEC LEFT"}</div>
-                  </>
-                ) : (
-                  <>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" style={{
-                      marginBottom: 6,
-                      transition: "filter 0.3s ease",
-                    }}>
-                      <rect x="9" y="2" width="6" height="12" rx="3" />
-                      <path d="M5 10a7 7 0 0 0 14 0" />
-                      <line x1="12" y1="17" x2="12" y2="21" />
-                    </svg>
-                    <span style={{
-                      fontFamily: "'DM Sans'", fontSize: 12,
-                      fontWeight: 500, letterSpacing: 2,
-                      color: "rgba(255,255,255,0.7)",
-                      transition: "color 0.3s ease, letter-spacing 0.4s cubic-bezier(0.16, 1, 0.3, 1), text-shadow 0.3s ease",
-                    }}>SAY IT</span>
-                  </>
-                )}
-              </button>
+              {phase <= 0 ? "we're listening..."
+                : phase <= 1 ? "louder."
+                : phase <= 3 ? "LOUDER."
+                : phase <= 5 ? "WE CAN STILL HEAR YOUR SHAME."
+                : "TRANSCENDENT."}
             </div>
-          </div>
-        )}
+          )}
 
-        {isLive && (
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr",
-            gap: 1, width: "100%",
-            background: "#111116", borderRadius: 6,
-            overflow: "hidden", border: "1px solid #1a1a22",
-            marginBottom: 8, animation: "fadeIn 0.25s",
-          }}>
-            {[
-              { l: "VOLUME", v: dbDisp, u: "dB", c: rmsNorm > 0.7 ? "#ff2222" : hotAccent },
-              { l: "PEAK", v: peakDisp, u: "dB", c: "#e8e4e0" },
-              { l: "SCORE", v: score.toLocaleString(), u: "PTS", c: "#e8e4e0" },
-              { l: "LISTENERS", v: listeners > 0 ? listeners.toLocaleString() : "—", u: "EST", c: phase >= 3 ? "#ff8844" : "#555" },
-            ].map((d, i) => (
-              <div key={i} style={{ padding: "7px 4px", background: "#0b0b10", textAlign: "center" }}>
-                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 5.5, fontWeight: 300, letterSpacing: 2, color: "#33333c", marginBottom: 2 }}>{d.l}</div>
-                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 14, fontWeight: 200, color: d.c, letterSpacing: 1 }}>{d.v}</div>
-                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 5, fontWeight: 300, letterSpacing: 2, color: "#222230", marginTop: 1 }}>{d.u}</div>
-              </div>
-            ))}
-          </div>
-        )}
+          {isLive && wordDetected && (
+            <div key={wordCount} style={{
+              fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
+              color: "#22cc66", letterSpacing: 2, marginBottom: 8,
+              padding: "2px 8px", background: "#22cc6612", borderRadius: 3,
+              animation: "popIn 0.3s ease-out", textAlign: "center",
+            }}>PENIS DETECTED{wordCount > 1 ? ` ×${wordCount}` : ""}</div>
+          )}
 
-        {isLive && chartData.length > 3 && (
-          <div style={{ width: "100%", marginBottom: 8, animation: "fadeIn 0.3s" }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 7, fontWeight: 400, color: "#222230", letterSpacing: 2, marginBottom: 3 }}>$PENIS</div>
-            <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block" }}>
-              <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={hotAccent} stopOpacity="0.25" /><stop offset="100%" stopColor={hotAccent} stopOpacity="0" /></linearGradient></defs>
-              {chartFill && <path d={chartFill} fill="url(#cg)" />}
-              {chartPath && <path d={chartPath} fill="none" stroke={hotAccent} strokeWidth="1.5" />}
-              {chartData.length > 0 && <circle cx={(chartData.length - 1) / (CHART_POINTS - 1) * cW} cy={cH - chartData[chartData.length - 1] * cH} r="2.5" fill={hotAccent} style={{ filter: `drop-shadow(0 0 4px ${hotAccent})` }} />}
-            </svg>
-          </div>
-        )}
-
-        {isLive && peakDb > -50 && (
-          <div style={{ textAlign: "center", marginBottom: 6, animation: "fadeIn 0.3s" }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 6, fontWeight: 300, letterSpacing: 4, color: "#28282e" }}>SHAME LEVEL</div>
+          {isLive && (
             <div style={{
-              fontFamily: "'Cormorant Garamond'", fontSize: 18,
-              fontWeight: 600, fontStyle: "italic",
-              color: hotAccent, letterSpacing: 2, marginTop: 2,
-            }}>{rank.em} {rank.title}</div>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 7, fontWeight: 200, letterSpacing: 2, color: "#3a3a42", marginTop: 2 }}>{rank.sub}</div>
-          </div>
-        )}
+              display: "flex", alignItems: "flex-end", justifyContent: "center",
+              gap: 1.5, height: 40, width: "100%",
+              marginBottom: 8, animation: "fadeIn 0.15s",
+            }}>
+              {bars.map((v, i) => (
+                <div key={i} style={{
+                  width: Math.max(1.5, (280 / NUM_BARS) - 1.5),
+                  height: Math.max(1, v * 40), borderRadius: 1,
+                  background: v > 0.7 ? "#ff2222" : v > 0.4 ? hotAccent : `${hotAccent}66`,
+                  boxShadow: v > 0.6 ? `0 0 3px ${hotAccent}44` : "none",
+                  transition: "height 0.04s",
+                }} />
+              ))}
+            </div>
+          )}
 
-        {isIdle && (
-          <div style={{ textAlign: "center", animation: "fadeIn 0.5s" }}>
-            {micDenied && <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#ef4444", marginBottom: 10 }}>microphone required to play</div>}
-            {sessions > 0 && (
-              <div style={{ display: "flex", justifyContent: "center", gap: 16, fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 200, color: "#3a3a44", marginBottom: 10 }}>
-                <span>BEST <span style={{ color: accent }}>{best.toLocaleString()}</span></span>
-                <span>SESSIONS <span style={{ color: "#555" }}>{sessions}</span></span>
-              </div>
-            )}
-          </div>
-        )}
+          {isLive && (
+            <div style={{
+              display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr",
+              gap: 1, width: "100%",
+              background: "#111116", borderRadius: 6,
+              overflow: "hidden", border: "1px solid #1a1a22",
+              marginBottom: 8, animation: "fadeIn 0.25s",
+            }}>
+              {[
+                { l: "VOLUME", v: dbDisp, u: "dB", c: rmsNorm > 0.7 ? "#ff2222" : hotAccent },
+                { l: "PEAK", v: peakDisp, u: "dB", c: "#e8e4e0" },
+                { l: "SCORE", v: score.toLocaleString(), u: "PTS", c: "#e8e4e0" },
+                { l: "LISTENERS", v: listeners > 0 ? listeners.toLocaleString() : "\u2014", u: "EST", c: phase >= 3 ? "#ff8844" : "#555" },
+              ].map((d, i) => (
+                <div key={i} style={{ padding: "7px 4px", background: "#0b0b10", textAlign: "center" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400, letterSpacing: 1.5, color: "#44444e", marginBottom: 2 }}>{d.l}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 15, fontWeight: 200, color: d.c, letterSpacing: 1 }}>{d.v}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 300, letterSpacing: 1.5, color: "#33333c", marginTop: 1 }}>{d.u}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {isLive && chartData.length > 3 && (
+            <div style={{ width: "100%", marginBottom: 8, animation: "fadeIn 0.3s" }}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400, color: "#33333c", letterSpacing: 2, marginBottom: 3 }}>$PENIS</div>
+              <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block" }}>
+                <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={hotAccent} stopOpacity="0.25" /><stop offset="100%" stopColor={hotAccent} stopOpacity="0" /></linearGradient></defs>
+                {chartFill && <path d={chartFill} fill="url(#cg)" />}
+                {chartPath && <path d={chartPath} fill="none" stroke={hotAccent} strokeWidth="1.5" />}
+                {chartData.length > 0 && <circle cx={(chartData.length - 1) / (CHART_POINTS - 1) * cW} cy={cH - chartData[chartData.length - 1] * cH} r="2.5" fill={hotAccent} style={{ filter: `drop-shadow(0 0 4px ${hotAccent})` }} />}
+              </svg>
+            </div>
+          )}
+
+          {isLive && peakDb > -50 && (
+            <div style={{ textAlign: "center", marginBottom: 6, animation: "fadeIn 0.3s" }}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400, letterSpacing: 3, color: "#3a3a44" }}>SHAME LEVEL</div>
+              <div style={{
+                fontFamily: "'Cormorant Garamond'", fontSize: 20,
+                fontWeight: 600, fontStyle: "italic",
+                color: hotAccent, letterSpacing: 2, marginTop: 3,
+              }}>{rank.em} {rank.title}</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 200, letterSpacing: 1.5, color: "#44444e", marginTop: 2 }}>{rank.sub}</div>
+            </div>
+          )}
+
+          {isIdle && (
+            <div style={{ textAlign: "center", animation: "fadeIn 0.5s" }}>
+              {micDenied && <div style={{ fontFamily: "'DM Sans'", fontSize: 13, color: "#ef4444", marginBottom: 10 }}>microphone required to play</div>}
+              {sessions > 0 && (
+                <div style={{ display: "flex", justifyContent: "center", gap: 16, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 300, color: "#44444e", marginBottom: 10 }}>
+                  <span>BEST <span style={{ color: accent }}>{best.toLocaleString()}</span></span>
+                  <span>SESSIONS <span style={{ color: "#555" }}>{sessions}</span></span>
+                </div>
+              )}
+            </div>
+          )}
+        </DeviceFrame>
       </div>
 
       {/* Selfie preview bubble */}
@@ -1403,19 +1664,12 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
         ))}
       </div>
 
-      <div style={{
-        position: "fixed", bottom: 12,
-        fontFamily: "'JetBrains Mono'", fontSize: 7,
-        fontWeight: 200, letterSpacing: 3, color: "#18181e", zIndex: 20,
-      }}>
-        {isLive ? phase >= 4 ? "YOUR DIGNITY LEFT THE BUILDING" : "RECORDING" : "AN EXERCISE IN SHAMELESSNESS"}
-      </div>
-
       <style>{`
         @keyframes breathe { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.06); } }
         @keyframes pulseRing { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.04); } }
         @keyframes buttonBreathe { 0%, 100% { transform: scale(1); box-shadow: 0 6px 24px rgba(180,20,20,0.25), inset 0 -4px 10px rgba(0,0,0,0.3), inset 0 4px 10px rgba(255,120,120,0.08); } 50% { transform: scale(1.03); box-shadow: 0 8px 32px rgba(180,20,20,0.35), inset 0 -4px 10px rgba(0,0,0,0.3), inset 0 4px 10px rgba(255,120,120,0.1); } }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        @keyframes micSwing { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes warnSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes popIn { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
@@ -1429,8 +1683,9 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
         .game-btn:hover { transform: scale(1.06) !important; box-shadow: 0 8px 32px rgba(200,20,20,0.35), 0 0 40px rgba(224,32,32,0.1), inset 0 -4px 10px rgba(0,0,0,0.3), inset 0 4px 12px rgba(255,130,130,0.12) !important; }
         .game-btn:hover span { color: rgba(255,255,255,0.9) !important; letter-spacing: 4px !important; text-shadow: 0 0 10px rgba(255,180,180,0.4) !important; }
         .game-btn:hover svg { filter: drop-shadow(0 1px 5px rgba(255,200,200,0.35)) !important; }
-        ::-webkit-scrollbar { width: 2px; }
-        ::-webkit-scrollbar-thumb { background: #222; }
+        ::-webkit-scrollbar { width: 0px; }
+        .device-screen-content { scrollbar-width: none; -ms-overflow-style: none; }
+        .device-screen-content::-webkit-scrollbar { display: none; }
       `}</style>
     </div>
   );
@@ -1735,292 +1990,269 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
       }} />
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2, boxShadow: "inset 0 0 100px rgba(0,0,0,0.55)" }} />
 
-      <div style={{ position: "relative", zIndex: 10, width: "100%", maxWidth: 380, animation: "fadeIn 0.4s" }}>
-        {/* ═══ SHARE CARD — click to copy ═══ */}
-        <div
-          onClick={copyCard}
-          onMouseEnter={() => setCardHover(true)}
-          onMouseLeave={() => setCardHover(false)}
-          style={{
-            background: "#0b0c12",
-            border: `1px solid ${copied ? "#22cc6625" : cardHover ? "#2a2c38" : "#14161f"}`,
-            borderRadius: 12, padding: "20px 24px 16px", marginBottom: 12,
-            cursor: "pointer", position: "relative",
-            transition: "border-color 0.2s, transform 0.15s, box-shadow 0.2s",
-            transform: cardHover && !copied ? "scale(1.01)" : "scale(1)",
-            boxShadow: cardHover && !copied ? "0 4px 24px rgba(224,32,32,0.08)" : "none",
-          }}
+      <div style={{ position: "relative", zIndex: 10, animation: "fadeIn 0.4s" }}>
+        <DeviceFrame
+          ledActive ledPulse
+          ledColor="#22cc66"
+          statusText={supabase ? "LEADERBOARD" : undefined}
+          onStatusClick={supabase ? onLeaderboard : undefined}
+          controls={
+            <>
+              {/* Three clear actions */}
+              <div style={{ display: "flex", gap: 8, width: "100%", padding: "0 4px" }}>
+                <a
+                  href={`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  onClick={() => { copyCard(); }}
+                  className="result-share-btn"
+                  style={{
+                    flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 500,
+                    letterSpacing: 1, color: "#000", background: "#fff",
+                    border: "none", padding: "11px 0", borderRadius: 8, cursor: "pointer",
+                    textDecoration: "none", textAlign: "center", display: "block",
+                    transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.2s ease",
+                  }}
+                >SHARE</a>
+                <button onClick={copyCard} className="result-copy-btn" style={{
+                  flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 500,
+                  letterSpacing: 1, color: copied ? "#22cc66" : "#e02020",
+                  background: copied ? "#22cc6612" : "#e0202012",
+                  border: `1px solid ${copied ? "#22cc6630" : "#e0202030"}`,
+                  padding: "11px 0", borderRadius: 8, cursor: "pointer",
+                  transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}>{copied ? "COPIED!" : "COPY IMG"}</button>
+                <button onClick={onAgain} className="result-play-btn" style={{
+                  flex: 1, fontFamily: "'Cormorant Garamond', serif", fontSize: 16, fontWeight: 400,
+                  fontStyle: "italic", color: "#f0ece8", background: "#e02020",
+                  border: "none", padding: "11px 0", borderRadius: 8, cursor: "pointer",
+                  boxShadow: "0 4px 20px #e0202044", letterSpacing: 1,
+                  transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.2s ease",
+                }}>play again</button>
+              </div>
+            </>
+          }
         >
-          {/* Copied overlay */}
-          <div style={{
-            position: "absolute", inset: 0, borderRadius: 12,
-            background: copied ? "rgba(34,204,102,0.1)" : "transparent",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            opacity: copied ? 1 : 0, transition: "opacity 0.15s",
-            pointerEvents: "none", zIndex: 5,
-          }}>
-            <span style={{
-              fontFamily: "'JetBrains Mono'", fontSize: 13, fontWeight: 500,
-              letterSpacing: 2, color: "#22cc66",
-              background: "#22cc6620", padding: "8px 20px", borderRadius: 8,
-            }}>COPIED!</span>
-          </div>
-
-          {/* Branding */}
-          <div style={{ textAlign: "center", marginBottom: 14 }}>
+          {/* ═══ SCREEN CONTENT — result card ═══ */}
+          <div
+            onClick={copyCard}
+            onMouseEnter={() => setCardHover(true)}
+            onMouseLeave={() => setCardHover(false)}
+            style={{ cursor: "pointer", position: "relative" }}
+          >
+            {/* Copied overlay */}
             <div style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: 16, fontWeight: 300, fontStyle: "italic",
-              color: "#f0ece8", letterSpacing: 2,
-            }}>the penis game</div>
-          </div>
+              position: "absolute", inset: 0, borderRadius: 8,
+              background: copied ? "rgba(34,204,102,0.1)" : "transparent",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              opacity: copied ? 1 : 0, transition: "opacity 0.15s",
+              pointerEvents: "none", zIndex: 5,
+            }}>
+              <span style={{
+                fontFamily: "'JetBrains Mono'", fontSize: 13, fontWeight: 500,
+                letterSpacing: 2, color: "#22cc66",
+                background: "#22cc6620", padding: "8px 20px", borderRadius: 8,
+              }}>COPIED!</span>
+            </div>
 
-          {/* Rank */}
-          <div style={{ textAlign: "center", marginBottom: 8 }}>
-            <div style={{ fontSize: 40, marginBottom: 2, lineHeight: 1 }}>{result.rank.em}</div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 300, fontStyle: "italic", color: "#f0ece8", letterSpacing: 2, marginBottom: 2 }}>{result.rank.title}</div>
-            <div style={{ fontFamily: "'Cormorant Garamond'", fontSize: 13, fontWeight: 400, fontStyle: "italic", color: "#666" }}>{result.rank.sub}</div>
-          </div>
+            {/* Rank */}
+            <div style={{ textAlign: "center", marginBottom: 6 }}>
+              <div style={{ fontSize: 36, marginBottom: 2, lineHeight: 1 }}>{result.rank.em}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 300, fontStyle: "italic", color: "#f0ece8", letterSpacing: 2, marginBottom: 2 }}>{result.rank.title}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond'", fontSize: 12, fontWeight: 400, fontStyle: "italic", color: "#666" }}>{result.rank.sub}</div>
+            </div>
 
-          {/* Score — hero */}
-          <div style={{ textAlign: "center", marginBottom: 12 }}>
+            {/* Score — hero */}
+            <div style={{ textAlign: "center", marginBottom: 6, position: "relative" }}>
+              <div style={{
+                position: "absolute", top: "50%", left: "50%",
+                width: 220, height: 80,
+                transform: "translate(-50%, -50%)",
+                background: "radial-gradient(ellipse, rgba(224,32,32,0.06) 0%, transparent 70%)",
+                pointerEvents: "none",
+              }} />
+              <div style={{
+                fontFamily: "'JetBrains Mono'", fontSize: 60, fontWeight: 600,
+                color: "#e02020", lineHeight: 1,
+                textShadow: "0 0 40px #e0202033, 0 0 80px #e0202018",
+                position: "relative",
+              }}>{result.score.toLocaleString()}</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 5, color: "#666", marginTop: 3, fontWeight: 400, position: "relative" }}>POINTS</div>
+            </div>
+
+            {/* Peak stat */}
+            <div style={{ textAlign: "center", marginBottom: 6 }}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400, letterSpacing: 2, color: "#555", marginBottom: 2 }}>PEAK</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 15, fontWeight: 200, color: "#e8e4e0" }}>{Math.max(0, 60 + result.peakDb).toFixed(0)} dB</div>
+            </div>
+
+            {/* Chart */}
+            {chartData.length > 3 && (
+              <div>
+                <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block", height: 36 }}>
+                  <defs>
+                    <linearGradient id="rcg" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#e02020" stopOpacity="0.2" />
+                      <stop offset="100%" stopColor="#e02020" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  {chartFill && <path d={chartFill} fill="url(#rcg)" />}
+                  {chartPath && <path d={chartPath} fill="none" stroke="#e02020" strokeWidth="1.5" />}
+                  {chartData.length > 0 && (
+                    <circle cx={cW} cy={cH - chartData[chartData.length - 1] * cH * 0.9 - cH * 0.05} r="2.5" fill="#e02020"
+                      style={{ filter: "drop-shadow(0 0 4px #e02020)" }} />
+                  )}
+                </svg>
+              </div>
+            )}
+
+            {/* Tap hint */}
             <div style={{
-              fontFamily: "'JetBrains Mono'", fontSize: 72, fontWeight: 600,
-              color: "#e02020", lineHeight: 1,
-              textShadow: "0 0 40px #e0202033, 0 0 80px #e0202018",
-            }}>{result.score.toLocaleString()}</div>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 11, letterSpacing: 4, color: "#666", marginTop: 4 }}>POINTS</div>
+              textAlign: "center", marginTop: 6, height: 14,
+              fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 300,
+              letterSpacing: 2,
+              color: copied ? "#22cc66" : "#555",
+              opacity: cardHover || copied ? 1 : 0.4,
+              transition: "opacity 0.2s, color 0.2s",
+            }}>{copied ? "COPIED TO CLIPBOARD" : "TAP TO COPY"}</div>
           </div>
 
-          {/* Peak stat */}
-          <div style={{ textAlign: "center", marginBottom: 12 }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 300, letterSpacing: 2, color: "#555", marginBottom: 3 }}>PEAK</div>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 18, fontWeight: 200, color: "#e8e4e0" }}>{Math.max(0, 60 + result.peakDb).toFixed(0)} dB</div>
-          </div>
-
-          {/* Chart */}
-          {chartData.length > 3 && (
-            <div>
-              <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block", height: 55 }}>
-                <defs>
-                  <linearGradient id="rcg" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#e02020" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#e02020" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                {chartFill && <path d={chartFill} fill="url(#rcg)" />}
-                {chartPath && <path d={chartPath} fill="none" stroke="#e02020" strokeWidth="1.5" />}
-                {chartData.length > 0 && (
-                  <circle cx={cW} cy={cH - chartData[chartData.length - 1] * cH * 0.9 - cH * 0.05} r="2.5" fill="#e02020"
-                    style={{ filter: "drop-shadow(0 0 4px #e02020)" }} />
-                )}
-              </svg>
+          {/* Audio player — inside screen */}
+          {result.audioBlob && !hasVideo && (
+            <div style={{
+              background: "#0a0c14", borderRadius: 6, padding: "8px 10px", marginTop: 8,
+              border: "1px solid #14161f",
+            }}>
+              <div onClick={seekTo} style={{
+                width: "100%", height: 24, borderRadius: 3,
+                background: "#080a10", cursor: "pointer", position: "relative",
+                overflow: "hidden", marginBottom: 6,
+              }}>
+                <div style={{
+                  position: "absolute", left: 0, top: 0, bottom: 0,
+                  width: `${progress * 100}%`,
+                  background: "linear-gradient(90deg, #e02020, #ff4444)",
+                  borderRadius: 3,
+                  transition: playing ? "width 0.05s linear" : "width 0.15s ease-out",
+                }} />
+                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0 2px" }}>
+                  {Array.from({ length: 40 }, (_, i) => {
+                    const h = 4 + Math.sin(i * 0.7 + 2) * 6 + Math.sin(i * 1.3) * 5 + Math.random() * 2;
+                    const filled = i / 40 < progress;
+                    return <div key={i} style={{
+                      width: 3, height: Math.max(3, h), borderRadius: 1,
+                      background: filled ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.06)",
+                      transition: "background 0.1s",
+                    }} />;
+                  })}
+                </div>
+                <div style={{
+                  position: "absolute", top: 0, bottom: 0,
+                  left: `${progress * 100}%`, width: 2,
+                  background: "#fff", borderRadius: 1,
+                  boxShadow: "0 0 6px rgba(255,255,255,0.3)",
+                  transition: playing ? "left 0.05s linear" : "left 0.15s ease-out",
+                }} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button onClick={togglePlay} className="audio-play-btn" style={{
+                  width: 28, height: 28, borderRadius: "50%",
+                  background: playing ? "#e02020" : "#1a1c28",
+                  border: `1px solid ${playing ? "#e02020" : "#22242e"}`,
+                  color: "#f0ece8", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 11, flexShrink: 0,
+                  boxShadow: playing ? "0 0 12px #e0202033" : "none",
+                  transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, box-shadow 0.3s ease",
+                }}>
+                  {playing ? "⏸" : "▶"}
+                </button>
+                <div style={{ flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#666" }}>
+                  <span style={{ color: "#e8e4e0" }}>{fmtTime(progress * audioDur)}</span>
+                  <span> / {fmtTime(audioDur)}</span>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Tap hint — appears on hover */}
-          <div style={{
-            textAlign: "center", marginTop: 8, height: 14,
-            fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 300,
-            letterSpacing: 2,
-            color: copied ? "#22cc66" : "#666",
-            opacity: cardHover || copied ? 1 : 0,
-            transform: cardHover || copied ? "translateY(0)" : "translateY(4px)",
-            transition: "opacity 0.2s, transform 0.2s, color 0.2s",
-          }}>{copied ? "COPIED TO CLIPBOARD" : "CLICK TO COPY"}</div>
-        </div>
-
-        {/* Video player — when video exists */}
-        {hasVideo && videoUrlRef.current && (
-          <div style={{
-            background: "#0e1018", border: "1px solid #14161f",
-            borderRadius: 8, padding: "10px 12px", marginBottom: 10,
-          }}>
-            <video
-              src={videoUrlRef.current}
-              controls playsInline
-              style={{
-                width: "100%", borderRadius: 6,
-                maxHeight: 280, objectFit: "cover",
-                transform: "scaleX(-1)",
-                background: "#000",
-              }}
-            />
-            <button
-              onClick={shareVideo}
-              className="result-play-btn"
-              style={{
-                width: "100%", marginTop: 8,
-                fontFamily: "'JetBrains Mono'", fontSize: 12, fontWeight: 500,
-                letterSpacing: 2, color: "#f0ece8", background: "#e02020",
-                border: "none", padding: "13px 0", borderRadius: 8, cursor: "pointer",
-                boxShadow: "0 4px 20px #e0202044",
-                transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.2s ease",
-              }}
-            >SHARE VIDEO</button>
-          </div>
-        )}
-
-        {/* Audio player — compact (fallback when no video) */}
-        {result.audioBlob && !hasVideo && (
-          <div style={{
-            background: "#0e1018", border: "1px solid #14161f",
-            borderRadius: 8, padding: "10px 12px", marginBottom: 10,
-          }}>
-            <div onClick={seekTo} style={{
-              width: "100%", height: 28, borderRadius: 4,
-              background: "#0a0c14", cursor: "pointer", position: "relative",
-              overflow: "hidden", marginBottom: 8,
-            }}>
-              <div style={{
-                position: "absolute", left: 0, top: 0, bottom: 0,
-                width: `${progress * 100}%`,
-                background: "linear-gradient(90deg, #e02020, #ff4444)",
-                borderRadius: 4,
-                transition: playing ? "width 0.05s linear" : "width 0.15s ease-out",
-              }} />
-              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0 2px" }}>
-                {Array.from({ length: 40 }, (_, i) => {
-                  const h = 4 + Math.sin(i * 0.7 + 2) * 6 + Math.sin(i * 1.3) * 5 + Math.random() * 2;
-                  const filled = i / 40 < progress;
-                  return <div key={i} style={{
-                    width: 3, height: Math.max(3, h), borderRadius: 1,
-                    background: filled ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.06)",
-                    transition: "background 0.1s",
-                  }} />;
-                })}
-              </div>
-              <div style={{
-                position: "absolute", top: 0, bottom: 0,
-                left: `${progress * 100}%`, width: 2,
-                background: "#fff", borderRadius: 1,
-                boxShadow: "0 0 6px rgba(255,255,255,0.3)",
-                transition: playing ? "left 0.05s linear" : "left 0.15s ease-out",
-              }} />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={togglePlay} className="audio-play-btn" style={{
-                width: 32, height: 32, borderRadius: "50%",
-                background: playing ? "#e02020" : "#1a1c28",
-                border: `1px solid ${playing ? "#e02020" : "#22242e"}`,
-                color: "#f0ece8", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 12, flexShrink: 0,
-                boxShadow: playing ? "0 0 12px #e0202033" : "none",
-                transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease, box-shadow 0.3s ease",
-              }}>
-                {playing ? "⏸" : "▶"}
-              </button>
-              <div style={{ flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#666" }}>
-                <span style={{ color: "#e8e4e0" }}>{fmtTime(progress * audioDur)}</span>
-                <span> / {fmtTime(audioDur)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Submit to leaderboard — compact */}
-        {supabase && !uploaded && (
-          <div style={{
-            background: "#0e1018", border: "1px solid #14161f",
-            borderRadius: 8, padding: "10px 12px", marginBottom: 10,
-          }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, letterSpacing: 3, color: "#555", marginBottom: 8 }}>SUBMIT TO LEADERBOARD</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                type="text"
-                placeholder="your name"
-                value={playerName}
-                onChange={e => setPlayerName(e.target.value.slice(0, 24))}
-                maxLength={24}
-                className="name-input"
+          {/* Video player — inside screen */}
+          {hasVideo && videoUrlRef.current && (
+            <div style={{ marginTop: 8 }}>
+              <video
+                src={videoUrlRef.current}
+                controls playsInline
                 style={{
-                  flex: 1, padding: "9px 12px", borderRadius: 6,
-                  background: "#0a0c14", border: "1px solid #1a1c28",
-                  color: "#e8e4e0", fontFamily: "'DM Sans'", fontSize: 14,
-                  outline: "none",
-                  transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                  width: "100%", borderRadius: 6,
+                  maxHeight: 140, objectFit: "cover",
+                  transform: "scaleX(-1)",
+                  background: "#000",
                 }}
               />
-              <button
-                disabled={uploading}
-                className="submit-btn"
-                onClick={async () => {
-                  setUploading(true); setUploadError(null);
-                  const res = await uploadScream({
-                    score: result.score,
-                    peakDb: result.peakDb,
-                    rank: result.rank,
-                    duration: result.duration,
-                    chartData: result.chartData,
-                    audioBlob: result.audioBlob,
-                    playerName: playerName.trim() || "anonymous",
-                  });
-                  setUploading(false);
-                  if (res) { haptic("success"); setUploaded(true); } else { haptic("error"); setUploadError("failed — try again"); }
-                }}
-                style={{
-                  padding: "9px 18px", borderRadius: 6,
-                  background: uploading ? "#333" : "#e02020",
-                  border: "none", color: "#f0ece8", cursor: uploading ? "default" : "pointer",
-                  fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 400, letterSpacing: 1,
-                  whiteSpace: "nowrap",
-                  transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.3s ease",
-                }}
-              >{uploading ? "..." : "SUBMIT"}</button>
             </div>
-            {uploadError && <div style={{ fontFamily: "'DM Sans'", fontSize: 11, color: "#ef4444", marginTop: 6 }}>{uploadError}</div>}
-          </div>
-        )}
-        {supabase && uploaded && (
-          <div style={{
-            background: "#22cc6612", border: "1px solid #22cc6625",
-            borderRadius: 8, padding: "10px 14px", marginBottom: 10,
-            textAlign: "center",
-          }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#22cc66", letterSpacing: 1 }}>SUBMITTED TO LEADERBOARD</div>
-          </div>
-        )}
+          )}
 
-        {/* Three clear actions */}
-        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-          <a
-            href={`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
-            target="_blank" rel="noopener noreferrer"
-            onClick={() => { copyCard(); }}
-            className="result-share-btn"
-            style={{
-              flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 12, fontWeight: 500,
-              letterSpacing: 1, color: "#000", background: "#fff",
-              border: "none", padding: "13px 0", borderRadius: 8, cursor: "pointer",
-              textDecoration: "none", textAlign: "center", display: "block",
-              transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.2s ease",
-            }}
-          >SHARE</a>
-          <button onClick={copyCard} className="result-copy-btn" style={{
-            flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 12, fontWeight: 500,
-            letterSpacing: 1, color: copied ? "#22cc66" : "#e02020",
-            background: copied ? "#22cc6612" : "#e0202012",
-            border: `1px solid ${copied ? "#22cc6630" : "#e0202030"}`,
-            padding: "13px 0", borderRadius: 8, cursor: "pointer",
-            transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-          }}>{copied ? "COPIED!" : "COPY IMG"}</button>
-          <button onClick={onAgain} className="result-play-btn" style={{
-            flex: 1, fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 400,
-            fontStyle: "italic", color: "#f0ece8", background: "#e02020",
-            border: "none", padding: "13px 0", borderRadius: 8, cursor: "pointer",
-            boxShadow: "0 4px 20px #e0202044", letterSpacing: 1,
-            transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.2s ease",
-          }}>play again</button>
-        </div>
-        {supabase && <div style={{ textAlign: "center", marginTop: 10 }}>
-          <button onClick={onLeaderboard} className="result-lb-link" style={{
-            fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400,
-            letterSpacing: 2, color: "#444", background: "none",
-            border: "none", cursor: "pointer",
-            transition: "color 0.3s ease, letter-spacing 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-          }}>LEADERBOARD</button>
-        </div>}
+          {/* Submit to leaderboard — inside screen */}
+          {supabase && !uploaded && (
+            <div style={{
+              background: "#0a0c14", borderRadius: 6, padding: "8px 10px", marginTop: 8,
+              border: "1px solid #14161f",
+            }}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 2, color: "#555", marginBottom: 6 }}>SUBMIT TO LEADERBOARD</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <input
+                  type="text"
+                  placeholder="your name"
+                  value={playerName}
+                  onChange={e => setPlayerName(e.target.value.slice(0, 24))}
+                  maxLength={24}
+                  className="name-input"
+                  style={{
+                    flex: 1, padding: "8px 10px", borderRadius: 5,
+                    background: "#080a10", border: "1px solid #1a1c28",
+                    color: "#e8e4e0", fontFamily: "'DM Sans'", fontSize: 13,
+                    outline: "none",
+                    transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                  }}
+                />
+                <button
+                  disabled={uploading}
+                  className="submit-btn"
+                  onClick={async () => {
+                    setUploading(true); setUploadError(null);
+                    const res = await uploadScream({
+                      score: result.score,
+                      peakDb: result.peakDb,
+                      rank: result.rank,
+                      duration: result.duration,
+                      chartData: result.chartData,
+                      audioBlob: result.audioBlob,
+                      playerName: playerName.trim() || "anonymous",
+                    });
+                    setUploading(false);
+                    if (res) { haptic("success"); setUploaded(true); } else { haptic("error"); setUploadError("failed — try again"); }
+                  }}
+                  style={{
+                    padding: "8px 14px", borderRadius: 5,
+                    background: uploading ? "#333" : "#e02020",
+                    border: "none", color: "#f0ece8", cursor: uploading ? "default" : "pointer",
+                    fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 400, letterSpacing: 1,
+                    whiteSpace: "nowrap",
+                    transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.3s ease",
+                  }}
+                >{uploading ? "..." : "SUBMIT"}</button>
+              </div>
+              {uploadError && <div style={{ fontFamily: "'DM Sans'", fontSize: 12, color: "#ef4444", marginTop: 6 }}>{uploadError}</div>}
+            </div>
+          )}
+          {supabase && uploaded && (
+            <div style={{
+              background: "#22cc6612", border: "1px solid #22cc6625",
+              borderRadius: 6, padding: "8px 10px", marginTop: 8,
+              textAlign: "center",
+            }}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#22cc66", letterSpacing: 1 }}>SUBMITTED TO LEADERBOARD</div>
+            </div>
+          )}
+        </DeviceFrame>
       </div>
 
       {/* ═══ SHARE MODAL ═══ */}
@@ -2113,11 +2345,17 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes breathe { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.06); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        @keyframes micSwing { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #08090c; }
         button:focus { outline: none; }
         button:active { transform: scale(0.96) !important; }
         a { text-decoration: none; }
+        ::-webkit-scrollbar { width: 0px; }
+        .device-screen-content { scrollbar-width: none; -ms-overflow-style: none; }
+        .device-screen-content::-webkit-scrollbar { display: none; }
         .result-share-btn:hover { transform: scale(1.03) !important; box-shadow: 0 4px 20px rgba(255,255,255,0.15) !important; background: #f0f0f0 !important; }
         .result-copy-btn:hover { transform: scale(1.03) !important; border-color: #e0202050 !important; background: #e0202018 !important; }
         .result-play-btn:hover { transform: scale(1.03) !important; box-shadow: 0 6px 28px #e0202066 !important; background: #ee2424 !important; }
