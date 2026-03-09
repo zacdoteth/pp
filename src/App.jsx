@@ -295,7 +295,7 @@ function DeviceFrame({ children, controls, ledColor = "#e02020", ledActive = fal
             background: "linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 100%)",
             pointerEvents: "none", zIndex: 4, borderRadius: "0 0 50% 50%",
           }} />
-          <div className="device-screen-content" style={{ padding: "20px 18px 16px", height: "clamp(300px, 50vh, 400px)", position: "relative", zIndex: 5, overflowY: "auto", overflowX: "hidden" }}>
+          <div className="device-screen-content" style={{ padding: "14px 16px 12px", height: "clamp(300px, 50vh, 400px)", position: "relative", zIndex: 5, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             {children}
           </div>
         </div>
@@ -512,6 +512,8 @@ const GAME_DURATION = 6.9;
 const MIN_DB = -60;
 const MAX_DB = 0;
 const CHART_POINTS = 120;
+const AUDIO_CAPTURE_CONSTRAINTS = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+const VIDEO_CAPTURE_CONSTRAINTS = { facingMode: "user", width: { ideal: 720 }, height: { ideal: 1280 } };
 
 const FONT_LINK = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=JetBrains+Mono:wght@200;300;400;500&family=DM+Sans:wght@300;400;500&display=swap";
 
@@ -550,8 +552,40 @@ export default function App() {
   const [screen, setScreen] = useState("home");
   const [result, setResult] = useState(null);
   const [videoEnabled, setVideoEnabled] = useState(false);
+  const [videoSetupState, setVideoSetupState] = useState("off");
 
   useEffect(() => { initSDK(); }, []);
+
+  const armVideoCapture = useCallback(async () => {
+    if (videoSetupState === "requesting") return false;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setVideoEnabled(false);
+      setVideoSetupState("denied");
+      return false;
+    }
+
+    setVideoSetupState("requesting");
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: AUDIO_CAPTURE_CONSTRAINTS,
+        video: VIDEO_CAPTURE_CONSTRAINTS,
+      });
+      stream.getTracks().forEach((track) => track.stop());
+      setVideoEnabled(true);
+      setVideoSetupState("ready");
+      return true;
+    } catch {
+      setVideoEnabled(false);
+      setVideoSetupState("denied");
+      return false;
+    }
+  }, [videoSetupState]);
+
+  const disarmVideoCapture = useCallback(() => {
+    setVideoEnabled(false);
+    setVideoSetupState("off");
+  }, []);
 
   const onGameEnd = (res) => {
     savePoints(res.score);
@@ -568,7 +602,14 @@ export default function App() {
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 
       {screen === "home" && (
-        <HomeScreen onPlay={() => setScreen("game")} onLeaderboard={() => setScreen("leaderboard")} videoEnabled={videoEnabled} setVideoEnabled={setVideoEnabled} />
+        <HomeScreen
+          onPlay={() => setScreen("game")}
+          onLeaderboard={() => setScreen("leaderboard")}
+          videoEnabled={videoEnabled}
+          videoSetupState={videoSetupState}
+          onEnableVideo={armVideoCapture}
+          onDisableVideo={disarmVideoCapture}
+        />
       )}
 
       {screen === "game" && (
@@ -596,7 +637,7 @@ export default function App() {
 // ═══════════════════════════════════════════════════════════════
 // HOME SCREEN — the Nintendo treatment
 // ═══════════════════════════════════════════════════════════════
-function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
+function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEnableVideo, onDisableVideo }) {
   const [tauntIdx, setTauntIdx] = useState(0);
   const [tauntFade, setTauntFade] = useState(true);
   const [idleBounce, setIdleBounce] = useState(0);
@@ -620,6 +661,22 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
   }, []);
 
   const accent = "#e02020";
+  const cameraReady = videoSetupState === "ready";
+  const cameraRequesting = videoSetupState === "requesting";
+  const cameraDenied = videoSetupState === "denied";
+  const cameraDot = cameraReady ? "#34c759" : cameraRequesting ? "#ff9f0a" : "#28242e";
+  const cameraStatusText = cameraRequesting
+    ? "approve cam + mic"
+    : cameraReady
+      ? "camera armed"
+      : cameraDenied
+        ? "camera blocked"
+        : "records selfie replay";
+  const startChips = [
+    { label: "MODE", value: "SOLO", tone: "#e8e4e0" },
+    { label: "ROUND", value: "6.9 SEC", tone: "#ffcc33" },
+    { label: "CAPTURE", value: cameraReady ? "CAM ON" : cameraRequesting ? "ARMING" : "MIC ONLY", tone: cameraReady ? "#34c759" : cameraRequesting ? "#ff9f0a" : "#8a8694" },
+  ];
 
   return (
     <div style={{
@@ -641,12 +698,42 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
         transition: "transform 0.3s ease-out",
       }}>
         <DeviceFrame
-          ledActive={entered}
-          ledPulse={entered}
+          ledActive={cameraReady || cameraRequesting}
+          ledPulse={cameraReady || cameraRequesting}
+          ledColor={cameraReady ? "#34c759" : "#ff9f0a"}
           statusText={supabase ? "LEADERBOARD" : undefined}
           onStatusClick={supabase ? onLeaderboard : undefined}
           controls={
             <>
+              <div style={{
+                textAlign: "center", marginBottom: 10,
+                opacity: entered ? 1 : 0,
+                transform: entered ? "translateY(0)" : "translateY(16px)",
+                transition: "opacity 0.7s ease 0.18s, transform 0.7s ease 0.18s",
+              }}>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#666", letterSpacing: 4, marginBottom: 5 }}>
+                  PLAYER ONE
+                </div>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  padding: "7px 12px", borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015))",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 18px rgba(0,0,0,0.22)",
+                  animation: "pressPrompt 2.4s ease-in-out infinite",
+                }}>
+                  <span style={{
+                    width: 7, height: 7, borderRadius: "50%",
+                    background: accent,
+                    boxShadow: "0 0 10px rgba(224,32,32,0.55)",
+                    animation: "blink 1.2s ease-in-out infinite",
+                  }} />
+                  <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#d4d0cc", letterSpacing: 2.5, fontWeight: 500 }}>
+                    PRESS THE RED BUTTON
+                  </span>
+                </div>
+              </div>
+
               {/* ═══ THE BUTTON — big, juicy, Nintendo tactile ═══ */}
               <div style={{
                 position: "relative", marginBottom: 16,
@@ -750,115 +837,107 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
             </>
           }
         >
-          {/* ═══ SCREEN CONTENT ═══ */}
+          {/* ═══ SCREEN CONTENT — fills the screen like a real Game Boy ═══ */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: 0 }}>
 
-          {/* Title */}
-          <div style={{
-            textAlign: "center", marginBottom: 20,
-            opacity: entered ? 1 : 0,
-            transform: entered ? "translateY(0) scale(1)" : "translateY(12px) scale(0.97)",
-            transition: "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
-          }}>
+            {/* Title — centered hero */}
             <div style={{
-              fontFamily: "'JetBrains Mono'", fontSize: 11,
-              fontWeight: 400, letterSpacing: 6, color: "#999",
-              marginBottom: 2, textTransform: "uppercase",
-            }}>the</div>
-            <h1 style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: 72,
-              fontWeight: 600, fontStyle: "italic",
-              letterSpacing: 5,
-              color: "#f0ece8",
-              lineHeight: 0.9, margin: 0,
-              textShadow: "0 0 40px rgba(224,32,32,0.12), 0 2px 16px rgba(0,0,0,0.4)",
-            }}>penis</h1>
-            <div style={{
-              fontFamily: "'JetBrains Mono'", fontSize: 11,
-              fontWeight: 400, letterSpacing: 6, color: "#999",
-              marginTop: 4, textTransform: "uppercase",
-            }}>game</div>
-          </div>
-
-          {/* Instructions */}
-          <div style={{
-            opacity: entered ? 1 : 0,
-            transform: entered ? "translateY(0)" : "translateY(10px)",
-            transition: "opacity 0.7s ease 0.2s, transform 0.7s ease 0.2s",
-            background: "rgba(255,255,255,0.02)", borderRadius: 8,
-            border: "1px solid rgba(255,255,255,0.05)",
-            padding: "12px 14px", marginBottom: 12,
-          }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 3, color: "#888", marginBottom: 10, fontWeight: 500 }}>HOW TO PLAY</div>
-            {[
-              { n: "1", text: <>scream <span style={{ color: "#f0ece8", fontWeight: 600 }}>PENIS</span> into your phone</> },
-              { n: "2", text: <>you have <span style={{ color: "#ffcc33", fontFamily: "'JetBrains Mono'", fontWeight: 600, fontSize: 13 }}>6.9</span> seconds</> },
-              { n: "3", text: <>press the big red button</> },
-            ].map((step, i) => (
-              <div key={i} style={{
-                display: "flex", alignItems: "baseline", gap: 10,
-                marginBottom: i < 2 ? 6 : 0,
-                opacity: entered ? 1 : 0,
-                transform: entered ? "translateY(0)" : "translateY(6px)",
-                transition: `opacity 0.4s ease ${0.3 + i * 0.08}s, transform 0.4s ease ${0.3 + i * 0.08}s`,
-              }}>
-                <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 12, color: "#555", fontWeight: 600, flexShrink: 0 }}>{step.n}</span>
-                <span style={{
-                  fontFamily: "'DM Sans'", fontSize: 14,
-                  fontWeight: 400, color: "#ccc", lineHeight: 1.5,
-                }}>{step.text}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Taunt text — cycling */}
-          <div style={{
-            textAlign: "center", height: 20, marginBottom: 8,
-            opacity: entered ? 1 : 0,
-            transition: "opacity 0.8s ease 0.5s",
-          }}>
-            <div style={{
-              fontFamily: "'Cormorant Garamond'", fontSize: 15,
-              fontWeight: 400, fontStyle: "italic", color: "#777",
-              opacity: tauntFade ? 1 : 0,
-              transform: tauntFade ? "translateY(0)" : "translateY(-3px)",
-              transition: "opacity 0.3s, transform 0.3s",
-            }}>{TAUNTS[tauntIdx]}</div>
-          </div>
-
-          {/* Record toggle + NSFW */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            opacity: entered ? 1 : 0,
-            transition: "opacity 0.8s ease 0.6s",
-            padding: "4px 0",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: videoEnabled ? "#e8e4e0" : "#666", letterSpacing: 1, fontWeight: 500, transition: "color 0.2s" }}>
-                REC
-              </span>
-              <button
-                onClick={() => setVideoEnabled(!videoEnabled)}
-                style={{
-                  width: 34, height: 20, borderRadius: 10, border: "none", cursor: "pointer",
-                  background: videoEnabled ? "#e02020" : "#1a1820",
-                  position: "relative", transition: "background 0.2s",
-                  outline: "none", WebkitTapHighlightColor: "transparent",
-                  boxShadow: videoEnabled ? "0 0 8px #e0202033" : "inset 0 1px 2px rgba(0,0,0,0.4)",
-                }}
-              >
-                <div style={{
-                  width: 16, height: 16, borderRadius: "50%", background: "#e8e4e0",
-                  position: "absolute", top: 2,
-                  left: videoEnabled ? 16 : 2,
-                  transition: "left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                }} />
-              </button>
+              textAlign: "center",
+              opacity: entered ? 1 : 0,
+              transform: entered ? "translateY(0) scale(1)" : "translateY(12px) scale(0.97)",
+              transition: "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
+              marginBottom: 24,
+            }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono'", fontSize: 11,
+                fontWeight: 400, letterSpacing: 6, color: "#999",
+                marginBottom: 2, textTransform: "uppercase",
+              }}>the</div>
+              <h1 style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: 72,
+                fontWeight: 600, fontStyle: "italic",
+                letterSpacing: 5,
+                color: "#f0ece8",
+                lineHeight: 0.9, margin: 0,
+                textShadow: "0 0 40px rgba(224,32,32,0.12), 0 2px 16px rgba(0,0,0,0.4)",
+              }}>penis</h1>
+              <div style={{
+                fontFamily: "'JetBrains Mono'", fontSize: 11,
+                fontWeight: 400, letterSpacing: 6, color: "#999",
+                marginTop: 4, textTransform: "uppercase",
+              }}>game</div>
             </div>
-            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#555", letterSpacing: 2, fontWeight: 400 }}>
-              NSFW
+
+            {/* Instructions */}
+            <div style={{
+              textAlign: "center",
+              opacity: entered ? 1 : 0,
+              transform: entered ? "translateY(0)" : "translateY(8px)",
+              transition: "opacity 0.6s ease 0.15s, transform 0.6s ease 0.15s",
+              marginBottom: 20,
+            }}>
+              <div style={{
+                fontFamily: "'DM Sans'", fontSize: 15,
+                fontWeight: 400, color: "#999", lineHeight: 1.6,
+              }}>scream <span style={{ color: "#f0ece8", fontWeight: 600 }}>PENIS</span> as loud as you can</div>
+              <div style={{
+                fontFamily: "'JetBrains Mono'", fontSize: 11,
+                fontWeight: 400, color: "#666", marginTop: 6,
+              }}>you have <span style={{ color: "#ffcc33", fontWeight: 600 }}>6.9</span> seconds</div>
+            </div>
+
+            {/* Taunt — cycling */}
+            <div style={{
+              textAlign: "center", height: 20,
+              opacity: entered ? 1 : 0,
+              transition: "opacity 0.8s ease 0.5s",
+            }}>
+              <div style={{
+                fontFamily: "'Cormorant Garamond'", fontSize: 15,
+                fontWeight: 400, fontStyle: "italic", color: "#777",
+                opacity: tauntFade ? 1 : 0,
+                transform: tauntFade ? "translateY(0)" : "translateY(-3px)",
+                transition: "opacity 0.3s, transform 0.3s",
+              }}>{TAUNTS[tauntIdx]}</div>
+            </div>
+
+          </div>
+
+          {/* REC toggle — bottom of screen */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            opacity: entered ? 1 : 0,
+            transition: "opacity 0.8s ease 0.4s",
+            flexShrink: 0,
+          }}>
+            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: videoEnabled ? "#e8e4e0" : "#555", letterSpacing: 1, fontWeight: 500, transition: "color 0.2s" }}>
+              REC
             </span>
+            <button
+              onClick={() => {
+                if (cameraRequesting) return;
+                if (videoEnabled) { onDisableVideo(); } else { onEnableVideo(); }
+              }}
+              aria-label={videoEnabled ? "Disable camera recording" : "Enable camera recording"}
+              disabled={cameraRequesting}
+              style={{
+                width: 34, height: 20, borderRadius: 10, border: "none", cursor: "pointer",
+                background: videoEnabled ? "#e02020" : "#1a1820",
+                position: "relative", transition: "background 0.2s",
+                outline: "none", WebkitTapHighlightColor: "transparent",
+                boxShadow: videoEnabled ? "0 0 8px #e0202033" : "inset 0 1px 2px rgba(0,0,0,0.4)",
+                opacity: cameraRequesting ? 0.7 : 1,
+              }}
+            >
+              <div style={{
+                width: 16, height: 16, borderRadius: "50%", background: "#e8e4e0",
+                position: "absolute", top: 2,
+                left: videoEnabled ? 16 : 2,
+                transition: "left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+              }} />
+            </button>
           </div>
         </DeviceFrame>
       </div>
@@ -868,6 +947,7 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, setVideoEnabled }) {
         @keyframes pulseRing { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.04); } }
         @keyframes buttonBreathe { 0%, 100% { transform: scale(1); box-shadow: 0 8px 28px rgba(200,20,20,0.3), 0 2px 8px rgba(0,0,0,0.4), inset 0 -6px 14px rgba(0,0,0,0.35), inset 0 6px 14px rgba(255,130,130,0.1); } 50% { transform: scale(1.04); box-shadow: 0 10px 36px rgba(200,20,20,0.4), 0 2px 8px rgba(0,0,0,0.4), inset 0 -6px 14px rgba(0,0,0,0.35), inset 0 6px 14px rgba(255,130,130,0.12); } }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        @keyframes pressPrompt { 0%, 100% { transform: translateY(0); box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 6px 18px rgba(0,0,0,0.22); } 50% { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 24px rgba(0,0,0,0.28); } }
         @keyframes micSwing { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes popIn { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
@@ -1251,6 +1331,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
   const isIdle = gameState === "idle";
   const isCountdown = gameState === "countdown";
   const isMicPrompt = gameState === "mic-prompt";
+  const cameraLive = videoEnabled && Boolean(videoStreamRef.current?.getVideoTracks().length);
 
   const accent = "#e02020";
   const hotAccent = phase <= 2 ? "#e02020" : phase <= 4 ? "#ee3030" : "#ff2222";
@@ -1294,10 +1375,10 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
         animation: screenGlitch ? "screenGlitch 0.4s ease-out" : "none",
       }}>
         <DeviceFrame
-          ledActive={isLive && rmsNorm > 0.02}
-          ledPulse={isLive}
-          ledColor={isLive && rmsNorm > 0.5 ? "#ff2222" : "#e02020"}
-          statusText={isLive ? (phase >= 4 ? "YOUR DIGNITY LEFT THE BUILDING" : "RECORDING") : "AN EXERCISE IN SHAMELESSNESS"}
+          ledActive={cameraLive || (isLive && rmsNorm > 0.02)}
+          ledPulse={cameraLive ? false : isLive}
+          ledColor={cameraLive ? "#34c759" : isLive && rmsNorm > 0.5 ? "#ff2222" : "#e02020"}
+          statusText={cameraLive ? (isLive ? "CAM + MIC LIVE" : "CAM READY") : isLive ? (phase >= 4 ? "YOUR DIGNITY LEFT THE BUILDING" : "RECORDING") : "AN EXERCISE IN SHAMELESSNESS"}
           controls={
             <div style={{ position: "relative", opacity: isCountdown || isMicPrompt ? 0.3 : 1, transition: "opacity 0.3s", pointerEvents: isCountdown || isMicPrompt ? "none" : "auto" }}>
                 {isIdle && <div style={{
@@ -2186,12 +2267,12 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
             </>
           )}
 
-          {/* ═══ SCREEN CONTENT — result card ═══ */}
+          {/* ═══ SCREEN CONTENT — result card (flex layout, no scroll) ═══ */}
           <div
             onClick={copyCard}
             onMouseEnter={() => setCardHover(true)}
             onMouseLeave={() => setCardHover(false)}
-            style={{ cursor: "pointer", position: "relative", zIndex: 10 }}
+            style={{ cursor: "pointer", position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}
           >
             {/* Copied overlay */}
             <div style={{
@@ -2209,40 +2290,39 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
             </div>
 
             {/* Rank */}
-            <div style={{ textAlign: "center", marginBottom: hasVideo ? 4 : 12 }}>
-              <div style={{ fontSize: hasVideo ? 28 : 40, lineHeight: 1 }}>{result.rank.em}</div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: hasVideo ? 18 : 24, fontWeight: 300, fontStyle: "italic", color: "#f0ece8", letterSpacing: 2, marginTop: hasVideo ? 0 : 4 }}>{result.rank.title}</div>
-              {!hasVideo && <div style={{ fontFamily: "'Cormorant Garamond'", fontSize: 14, fontWeight: 400, fontStyle: "italic", color: "#555", marginTop: 4 }}>{result.rank.sub}</div>}
+            <div style={{ textAlign: "center", marginBottom: 2 }}>
+              <div style={{ fontSize: 24, lineHeight: 1 }}>{result.rank.em}</div>
+              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, fontWeight: 300, fontStyle: "italic", color: "#f0ece8", letterSpacing: 2 }}>{result.rank.title}</div>
             </div>
 
             {/* Score — hero */}
-            <div style={{ textAlign: "center", marginBottom: hasVideo ? 2 : 8, position: "relative" }}>
+            <div style={{ textAlign: "center", marginBottom: 0, position: "relative" }}>
               <div style={{
                 position: "absolute", top: "50%", left: "50%",
-                width: hasVideo ? 200 : 280, height: hasVideo ? 60 : 90,
+                width: 200, height: 60,
                 transform: "translate(-50%, -50%)",
                 background: "radial-gradient(ellipse, rgba(224,32,32,0.06) 0%, transparent 70%)",
                 pointerEvents: "none",
               }} />
               <div style={{
-                fontFamily: "'JetBrains Mono'", fontSize: hasVideo ? 52 : 72, fontWeight: 600,
+                fontFamily: "'JetBrains Mono'", fontSize: 48, fontWeight: 600,
                 color: "#e02020", lineHeight: 1,
                 textShadow: "0 0 40px #e0202033, 0 0 80px #e0202018",
                 position: "relative",
               }}>{result.score.toLocaleString()}</div>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: hasVideo ? 9 : 12, letterSpacing: 5, color: "#666", marginTop: hasVideo ? 2 : 6, fontWeight: 400, position: "relative" }}>POINTS</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 5, color: "#666", marginTop: 1, fontWeight: 400, position: "relative" }}>POINTS</div>
             </div>
 
             {/* Peak dB */}
-            <div style={{ textAlign: "center", marginBottom: hasVideo ? 4 : 8 }}>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: hasVideo ? 8 : 10, fontWeight: 400, letterSpacing: 2, color: "#555" }}>PEAK</div>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: hasVideo ? 14 : 28, fontWeight: 200, color: "#e8e4e0" }}>{Math.max(0, 60 + result.peakDb).toFixed(0)} dB</div>
+            <div style={{ textAlign: "center", marginTop: 2 }}>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 400, letterSpacing: 2, color: "#555" }}>PEAK</div>
+              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 16, fontWeight: 200, color: "#e8e4e0" }}>{Math.max(0, 60 + result.peakDb).toFixed(0)} dB</div>
             </div>
 
             {/* Chart — full width */}
             {chartData.length > 3 && (
-              <div style={{ width: "100%", marginBottom: hasVideo ? 4 : 8 }}>
-                <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block", height: hasVideo ? 28 : 44 }}>
+              <div style={{ width: "100%", marginTop: 2 }}>
+                <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block", height: 24 }}>
                   <defs>
                     <linearGradient id="rcg" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#e02020" stopOpacity="0.2" />
@@ -2260,8 +2340,8 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
             )}
           </div>
 
-          {/* Share actions — on screen */}
-          <div style={{ display: "flex", gap: 6, marginTop: hasVideo ? 6 : 12, position: "relative", zIndex: 10 }}>
+          {/* Share actions — pinned to bottom */}
+          <div style={{ display: "flex", gap: 5, marginTop: 4, position: "relative", zIndex: 10, flexShrink: 0 }}>
             <a
               href={`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
               target="_blank" rel="noopener noreferrer"
@@ -2270,7 +2350,7 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
               style={{
                 flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
                 letterSpacing: 1, color: "#000", background: "#fff",
-                border: "none", padding: "8px 0", borderRadius: 6, cursor: "pointer",
+                border: "none", padding: "7px 0", borderRadius: 6, cursor: "pointer",
                 textDecoration: "none", textAlign: "center", display: "block",
                 transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
               }}
@@ -2280,23 +2360,23 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
               letterSpacing: 1, color: copied ? "#22cc66" : "#e02020",
               background: copied ? "#22cc6612" : "#e0202012",
               border: `1px solid ${copied ? "#22cc6630" : "#e0202030"}`,
-              padding: "8px 0", borderRadius: 6, cursor: "pointer",
+              padding: "7px 0", borderRadius: 6, cursor: "pointer",
               transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
             }}>{copied ? "COPIED!" : "COPY IMG"}</button>
             {hasVideo && <button onClick={shareVideo} className="result-play-btn" style={{
               flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
               letterSpacing: 1, color: "#f0ece8", background: "#e02020",
-              border: "none", padding: "8px 0", borderRadius: 6, cursor: "pointer",
+              border: "none", padding: "7px 0", borderRadius: 6, cursor: "pointer",
               boxShadow: "0 2px 12px #e0202044",
               transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
             }}>SHARE VID</button>}
           </div>
 
-          {/* Audio playback — compact inline */}
+          {/* Audio playback — compact, pinned bottom */}
           {result.audioBlob && (
             <div style={{
-              display: "flex", alignItems: "center", gap: 8, marginTop: 6,
-              background: hasVideo ? "rgba(10,12,20,0.8)" : "#0a0c14", borderRadius: 6, padding: "6px 10px",
+              display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexShrink: 0,
+              background: hasVideo ? "rgba(10,12,20,0.8)" : "#0a0c14", borderRadius: 5, padding: "5px 8px",
               border: `1px solid ${hasVideo ? "rgba(20,22,31,0.6)" : "#14161f"}`,
               position: "relative", zIndex: 10,
             }}>
@@ -2341,9 +2421,9 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
           {/* Submit to leaderboard — inside screen */}
           {supabase && !uploaded && (
             <div style={{
-              background: hasVideo ? "rgba(10,12,20,0.8)" : "#0a0c14", borderRadius: 6, padding: "8px 10px", marginTop: 8,
+              background: hasVideo ? "rgba(10,12,20,0.8)" : "#0a0c14", borderRadius: 5, padding: "6px 8px", marginTop: 4,
               border: `1px solid ${hasVideo ? "rgba(20,22,31,0.6)" : "#14161f"}`,
-              position: "relative", zIndex: 10,
+              position: "relative", zIndex: 10, flexShrink: 0,
             }}>
               <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 2, color: "#555", marginBottom: 6 }}>SUBMIT TO LEADERBOARD</div>
               <div style={{ display: "flex", gap: 6 }}>
