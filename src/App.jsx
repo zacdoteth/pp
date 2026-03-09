@@ -553,8 +553,17 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [videoEnabled, setVideoEnabled] = useState(false);
   const [videoSetupState, setVideoSetupState] = useState("off");
+  const previewStreamRef = useRef(null);
+  const [previewStream, setPreviewStream] = useState(null);
 
   useEffect(() => { initSDK(); }, []);
+
+  // Clean up preview stream on unmount
+  useEffect(() => () => {
+    if (previewStreamRef.current) {
+      previewStreamRef.current.getTracks().forEach(t => t.stop());
+    }
+  }, []);
 
   const armVideoCapture = useCallback(async () => {
     if (videoSetupState === "requesting") return false;
@@ -571,7 +580,9 @@ export default function App() {
         audio: AUDIO_CAPTURE_CONSTRAINTS,
         video: VIDEO_CAPTURE_CONSTRAINTS,
       });
-      stream.getTracks().forEach((track) => track.stop());
+      // Keep stream alive for preview
+      previewStreamRef.current = stream;
+      setPreviewStream(stream);
       setVideoEnabled(true);
       setVideoSetupState("ready");
       return true;
@@ -583,6 +594,11 @@ export default function App() {
   }, [videoSetupState]);
 
   const disarmVideoCapture = useCallback(() => {
+    if (previewStreamRef.current) {
+      previewStreamRef.current.getTracks().forEach(t => t.stop());
+      previewStreamRef.current = null;
+      setPreviewStream(null);
+    }
     setVideoEnabled(false);
     setVideoSetupState("off");
   }, []);
@@ -609,6 +625,7 @@ export default function App() {
           videoSetupState={videoSetupState}
           onEnableVideo={armVideoCapture}
           onDisableVideo={disarmVideoCapture}
+          previewStream={previewStream}
         />
       )}
 
@@ -637,7 +654,7 @@ export default function App() {
 // ═══════════════════════════════════════════════════════════════
 // HOME SCREEN — the Nintendo treatment
 // ═══════════════════════════════════════════════════════════════
-function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEnableVideo, onDisableVideo }) {
+function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEnableVideo, onDisableVideo, previewStream }) {
   const [tauntIdx, setTauntIdx] = useState(0);
   const [tauntFade, setTauntFade] = useState(true);
   const [idleBounce, setIdleBounce] = useState(0);
@@ -837,8 +854,34 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEn
             </>
           }
         >
+          {/* Camera preview background */}
+          {previewStream && previewStream.getVideoTracks().length > 0 && (
+            <>
+              <video
+                ref={el => {
+                  if (el && el.srcObject !== previewStream) el.srcObject = previewStream;
+                }}
+                autoPlay muted playsInline
+                style={{
+                  position: "absolute", inset: 0,
+                  width: "100%", height: "100%",
+                  objectFit: "cover", zIndex: 1,
+                  transform: "scaleX(-1)",
+                  animation: "fadeIn 0.5s",
+                  pointerEvents: "none",
+                  borderRadius: 20,
+                }}
+              />
+              <div style={{
+                position: "absolute", inset: 0, zIndex: 2,
+                background: "linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0.85) 100%)",
+                borderRadius: 20, pointerEvents: "none",
+              }} />
+            </>
+          )}
+
           {/* ═══ SCREEN CONTENT — fills the screen like a real Game Boy ═══ */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: 0 }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: 0, position: "relative", zIndex: 10 }}>
 
             {/* Title — centered hero */}
             <div style={{
@@ -909,7 +952,7 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEn
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             opacity: entered ? 1 : 0,
             transition: "opacity 0.8s ease 0.4s",
-            flexShrink: 0,
+            flexShrink: 0, position: "relative", zIndex: 10,
           }}>
             <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: videoEnabled ? "#e8e4e0" : "#555", letterSpacing: 1, fontWeight: 500, transition: "color 0.2s" }}>
               REC
@@ -1026,6 +1069,11 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
   const videoPreviewRef = useRef(null);
   const videoMimeRef = useRef("video/webm");
 
+  // Composite canvas for recording video + UI overlay
+  const compositeCanvasRef = useRef(null);
+  const compositeCtxRef = useRef(null);
+  const compositeVideoElRef = useRef(null);
+
   // ─── IDLE ANIMATIONS ───
   useEffect(() => {
     if (gameState !== "idle") return;
@@ -1083,16 +1131,35 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
         recorderRef.current = rec;
       } catch {}
 
-      // Video recorder (if stream has video tracks)
+      // Video — set up composite canvas for recording UI + camera
       if (stream.getVideoTracks().length > 0) {
         videoStreamRef.current = stream;
-        // Pick best supported video codec
+
+        // Create offscreen canvas for compositing
+        const canvas = document.createElement("canvas");
+        canvas.width = 720; canvas.height = 1280;
+        compositeCanvasRef.current = canvas;
+        compositeCtxRef.current = canvas.getContext("2d");
+
+        // Hidden video element to read camera frames
+        const vid = document.createElement("video");
+        vid.srcObject = stream;
+        vid.muted = true; vid.playsInline = true;
+        vid.play().catch(() => {});
+        compositeVideoElRef.current = vid;
+
+        // Record the composite canvas stream (with audio from mic)
+        const canvasStream = canvas.captureStream(30);
+        // Add audio track from original stream
+        const audioTracks = stream.getAudioTracks();
+        audioTracks.forEach(t => canvasStream.addTrack(t));
+
         const videoMime = ["video/mp4", "video/webm;codecs=vp9,opus", "video/webm"].find(
           m => MediaRecorder.isTypeSupported(m)
         ) || "video/webm";
         videoMimeRef.current = videoMime;
         try {
-          const vrec = new MediaRecorder(stream, { mimeType: videoMime });
+          const vrec = new MediaRecorder(canvasStream, { mimeType: videoMime });
           vrec.ondataavailable = (e) => { if (e.data.size > 0) videoChunksRef.current.push(e.data); };
           videoRecorderRef.current = vrec;
         } catch {}
@@ -1150,6 +1217,133 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
     return r;
   }, []);
 
+  // ─── COMPOSITE FRAME — draws video + UI to canvas for recording ───
+  const drawCompositeFrame = useCallback((score, db, peakDb, norm, elapsed, chartArr, barsArr) => {
+    const canvas = compositeCanvasRef.current;
+    const ctx = compositeCtxRef.current;
+    const video = compositeVideoElRef.current;
+    if (!canvas || !ctx) return;
+
+    const W = canvas.width, H = canvas.height;
+    const phase = getPhase(peakDb);
+
+    // Draw video frame (mirrored)
+    if (video && video.readyState >= 2) {
+      ctx.save();
+      ctx.translate(W, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, W, H);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = "#0a0a10";
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Dark overlay
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "rgba(0,0,0,0.75)");
+    grad.addColorStop(0.4, "rgba(0,0,0,0.6)");
+    grad.addColorStop(1, "rgba(0,0,0,0.8)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // "penis" text
+    const penisSize = Math.min(80, 48 + norm * 30);
+    ctx.font = `italic ${Math.min(700, 300 + norm * 500)} ${penisSize}px 'Cormorant Garamond', serif`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = phase >= 5 ? "#fff" : phase >= 3 ? "#fff5f0" : "#f0ece8";
+    ctx.shadowColor = `rgba(224,32,32,${0.2 + norm * 0.4})`;
+    ctx.shadowBlur = 15 + norm * 40;
+    ctx.fillText("penis", W / 2, H * 0.22);
+    ctx.shadowBlur = 0;
+
+    // Hero score
+    const scoreSize = Math.min(100, 72 + norm * 30);
+    ctx.font = `600 ${scoreSize}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = "#e02020";
+    ctx.shadowColor = "rgba(224,32,32,0.3)";
+    ctx.shadowBlur = 30 + norm * 40;
+    ctx.fillText(Math.floor(score).toLocaleString(), W / 2, H * 0.42);
+    ctx.shadowBlur = 0;
+
+    // POINTS label
+    ctx.font = "400 14px 'JetBrains Mono', monospace";
+    ctx.fillStyle = "#666";
+    ctx.letterSpacing = "5px";
+    ctx.fillText("POINTS", W / 2, H * 0.46);
+    ctx.letterSpacing = "0px";
+
+    // dB display
+    const dbDisp = (60 + db).toFixed(0);
+    const peakDisp = (60 + peakDb).toFixed(0);
+    ctx.font = "200 36px 'JetBrains Mono', monospace";
+    ctx.fillStyle = norm > 0.7 ? "#ff2222" : "#e02020";
+    ctx.fillText(`${dbDisp}dB`, W / 2 - 80, H * 0.56);
+    ctx.fillStyle = "#e8e4e0";
+    ctx.fillText(`${peakDisp}dB`, W / 2 + 80, H * 0.56);
+
+    ctx.font = "400 10px 'JetBrains Mono', monospace";
+    ctx.fillStyle = "#44444e";
+    ctx.fillText("VOLUME", W / 2 - 80, H * 0.52);
+    ctx.fillText("PEAK", W / 2 + 80, H * 0.52);
+
+    // Timer
+    const remaining = Math.max(0, GAME_DURATION - elapsed);
+    ctx.font = "200 24px 'JetBrains Mono', monospace";
+    ctx.fillStyle = remaining < 2 ? "#ff4444" : "#888";
+    ctx.fillText(`${remaining.toFixed(1)}s`, W / 2, H * 0.64);
+
+    // Frequency bars
+    if (barsArr && barsArr.length > 0) {
+      const barW = (W * 0.8) / barsArr.length;
+      const barMaxH = H * 0.08;
+      const barY = H * 0.72;
+      const barX0 = W * 0.1;
+      for (let i = 0; i < barsArr.length; i++) {
+        const v = barsArr[i];
+        const h = Math.max(1, v * barMaxH);
+        ctx.fillStyle = v > 0.7 ? "#ff2222" : v > 0.4 ? "#e02020" : "rgba(224,32,32,0.4)";
+        ctx.fillRect(barX0 + i * barW, barY - h, barW - 1, h);
+      }
+    }
+
+    // Chart
+    if (chartArr && chartArr.length > 3) {
+      const cX0 = W * 0.08, cW2 = W * 0.84, cY0 = H * 0.78, cH2 = H * 0.12;
+      ctx.beginPath();
+      for (let i = 0; i < chartArr.length; i++) {
+        const x = cX0 + (i / (CHART_POINTS - 1)) * cW2;
+        const y = cY0 + cH2 - chartArr[i] * cH2;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = "#e02020";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Fill under chart
+      ctx.lineTo(cX0 + ((chartArr.length - 1) / (CHART_POINTS - 1)) * cW2, cY0 + cH2);
+      ctx.lineTo(cX0, cY0 + cH2);
+      ctx.closePath();
+      const cGrad = ctx.createLinearGradient(0, cY0, 0, cY0 + cH2);
+      cGrad.addColorStop(0, "rgba(224,32,32,0.25)");
+      cGrad.addColorStop(1, "rgba(224,32,32,0)");
+      ctx.fillStyle = cGrad;
+      ctx.fill();
+
+      // $PENIS label
+      ctx.font = "400 12px 'JetBrains Mono', monospace";
+      ctx.fillStyle = "#33333c";
+      ctx.textAlign = "left";
+      ctx.fillText("$PENIS", cX0, cY0 - 4);
+      ctx.textAlign = "center";
+    }
+
+    // THE PENIS GAME watermark
+    ctx.font = "300 12px 'JetBrains Mono', monospace";
+    ctx.fillStyle = "rgba(224,32,32,0.25)";
+    ctx.fillText("THE PENIS GAME", W / 2, H * 0.96);
+  }, []);
+
   // ─── GAME LOOP ───
   const loop = useCallback(() => {
     if (gameStateRef.current !== "listening") return;
@@ -1205,8 +1399,11 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
       lastFlashRef.current = now; setFlash(true); setTimeout(() => setFlash(false), 80);
     }
 
+    // Draw composite frame for video recording
+    drawCompositeFrame(scoreRef.current, db, peakDbRef.current, norm, elapsed, chartRef.current.slice(-CHART_POINTS), computeBars());
+
     frameRef.current = requestAnimationFrame(loop);
-  }, [computeRmsDb, computeBars]);
+  }, [computeRmsDb, computeBars, drawCompositeFrame]);
 
   const launchGame = useCallback(() => {
     gameStateRef.current = "listening"; setGameState("listening");
