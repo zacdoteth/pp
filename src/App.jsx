@@ -2390,7 +2390,11 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
                 boxShadow: playing ? "0 0 8px #e0202033" : "none",
                 transition: "background 0.2s ease, border-color 0.2s ease, box-shadow 0.3s ease",
               }}>
-                {playing ? "⏸" : "▶"}
+                {playing ? (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><rect x="1" y="1" width="3" height="8" rx="0.5" /><rect x="6" y="1" width="3" height="8" rx="0.5" /></svg>
+                ) : (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4V1z" /></svg>
+                )}
               </button>
               <div onClick={seekTo} style={{
                 flex: 1, height: 20, borderRadius: 3,
@@ -2801,7 +2805,11 @@ function LeaderboardEntry({ entry, position, isPlaying, onTogglePlay }) {
         display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11,
         boxShadow: isPlaying ? "0 0 10px #e0202033" : "none",
       }}>
-        {isPlaying ? "⏸" : "▶"}
+        {isPlaying ? (
+          <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><rect x="1" y="1" width="3" height="8" rx="0.5" /><rect x="6" y="1" width="3" height="8" rx="0.5" /></svg>
+        ) : (
+          <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4V1z" /></svg>
+        )}
       </button>
 
       {/* Name + rank */}
