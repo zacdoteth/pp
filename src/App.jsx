@@ -1652,17 +1652,17 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
           )}
 
           {/* All flow content needs to sit above video background */}
-          <div style={{ position: "relative", zIndex: 10 }}>
+          <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
 
           <div style={{
-            textAlign: "center", marginBottom: 4,
+            textAlign: "center", marginBottom: 2, flexShrink: 0,
             opacity: isCountdown ? 0 : 1,
           }}>
             <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 300, letterSpacing: 3, color: "#e0202066" }}>THE PENIS GAME</span>
           </div>
 
           {onAir && <div style={{
-            display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, animation: "fadeIn 0.3s", marginBottom: 4,
+            display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, animation: "fadeIn 0.3s", marginBottom: 2, flexShrink: 0,
           }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ff2222",
               boxShadow: "0 0 6px #ff2222, 0 0 14px #ff222244", animation: "blink 1s infinite" }} />
@@ -1680,7 +1680,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
           }}>
             <h1 style={{
               fontFamily: "'Cormorant Garamond', serif",
-              fontSize: isLive ? Math.min(52, 32 + rmsNorm * 22) : 64,
+              fontSize: isLive ? `clamp(24px, 5vh, ${Math.min(52, 32 + rmsNorm * 22)}px)` : 64,
               fontWeight: isLive ? Math.min(700, 300 + rmsNorm * 500) : 300,
               fontStyle: "italic",
               letterSpacing: isLive ? 3 + rmsNorm * 16 + phase * 2 : 5,
@@ -1718,7 +1718,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
                 pointerEvents: "none",
               }} />
               <div style={{
-                fontFamily: "'JetBrains Mono'", fontSize: Math.min(72, 56 + rmsNorm * 20),
+                fontFamily: "'JetBrains Mono'", fontSize: `clamp(40px, 8vh, ${Math.min(72, 56 + rmsNorm * 20)}px)`,
                 fontWeight: 600, color: "#e02020", lineHeight: 1,
                 textShadow: `0 0 ${30 + rmsNorm * 40}px #e0202033, 0 0 ${60 + rmsNorm * 60}px #e0202018`,
                 position: "relative",
@@ -1730,20 +1730,20 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
 
           {/* ═══ dB DISPLAY — prominent, live ═══ */}
           {isLive && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 6, marginBottom: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginTop: 4, marginBottom: 2, flexShrink: 0 }}>
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 400, letterSpacing: 2, color: "#44444e" }}>VOLUME</div>
                 <div style={{
-                  fontFamily: "'JetBrains Mono'", fontSize: 28, fontWeight: 200,
+                  fontFamily: "'JetBrains Mono'", fontSize: "clamp(18px, 3.5vh, 28px)", fontWeight: 200,
                   color: rmsNorm > 0.7 ? "#ff2222" : hotAccent, letterSpacing: 1,
                   transition: "color 0.1s",
                 }}>{dbDisp}<span style={{ fontSize: 12, color: "#44444e", marginLeft: 2 }}>dB</span></div>
               </div>
-              <div style={{ width: 1, height: 28, background: "#1a1a22" }} />
+              <div style={{ width: 1, height: 24, background: "#1a1a22" }} />
               <div style={{ textAlign: "center" }}>
                 <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 400, letterSpacing: 2, color: "#44444e" }}>PEAK</div>
                 <div style={{
-                  fontFamily: "'JetBrains Mono'", fontSize: 28, fontWeight: 200,
+                  fontFamily: "'JetBrains Mono'", fontSize: "clamp(18px, 3.5vh, 28px)", fontWeight: 200,
                   color: "#e8e4e0", letterSpacing: 1,
                 }}>{peakDisp}<span style={{ fontSize: 12, color: "#44444e", marginLeft: 2 }}>dB</span></div>
               </div>
@@ -1752,9 +1752,9 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
 
           {isLive && (
             <div style={{
-              fontFamily: "'Cormorant Garamond'", fontSize: 14,
+              fontFamily: "'Cormorant Garamond'", fontSize: "clamp(11px, 2vh, 14px)",
               fontWeight: 400, fontStyle: "italic",
-              color: "#444", textAlign: "center", marginBottom: 4, minHeight: 16,
+              color: "#444", textAlign: "center", marginBottom: 2, flexShrink: 0,
             }}>
               {phase <= 0 ? "we're listening..."
                 : phase <= 1 ? "louder."
@@ -1767,7 +1767,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
           {isLive && wordDetected && (
             <div key={wordCount} style={{
               fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
-              color: "#22cc66", letterSpacing: 2, marginBottom: 4,
+              color: "#22cc66", letterSpacing: 2, marginBottom: 2, flexShrink: 0,
               padding: "2px 8px", background: "#22cc6612", borderRadius: 3,
               animation: "popIn 0.3s ease-out", textAlign: "center",
             }}>PENIS DETECTED{wordCount > 1 ? ` ×${wordCount}` : ""}</div>
@@ -1777,13 +1777,13 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
           {isLive && (
             <div style={{
               display: "flex", alignItems: "flex-end", justifyContent: "center",
-              gap: 1.5, height: 32, width: "100%",
-              marginBottom: 4, animation: "fadeIn 0.15s",
+              gap: 1.5, height: "clamp(16px, 4vh, 32px)", width: "100%",
+              marginBottom: 2, animation: "fadeIn 0.15s", flexShrink: 1, minHeight: 0,
             }}>
               {bars.map((v, i) => (
                 <div key={i} style={{
                   width: Math.max(1.5, (280 / NUM_BARS) - 1.5),
-                  height: Math.max(1, v * 32), borderRadius: 1,
+                  height: `${Math.max(3, v * 100)}%`, borderRadius: 1,
                   background: v > 0.7 ? "#ff2222" : v > 0.4 ? hotAccent : `${hotAccent}66`,
                   boxShadow: v > 0.6 ? `0 0 3px ${hotAccent}44` : "none",
                   transition: "height 0.04s",
@@ -1794,7 +1794,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
 
           {/* ═══ LIVE CHART ═══ */}
           {isLive && chartData.length > 3 && (
-            <div style={{ width: "100%", marginBottom: 4, animation: "fadeIn 0.3s" }}>
+            <div style={{ width: "100%", marginBottom: 2, animation: "fadeIn 0.3s", flexShrink: 1, minHeight: 0 }}>
               <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400, color: "#33333c", letterSpacing: 2, marginBottom: 2 }}>$PENIS</div>
               <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block" }}>
                 <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={hotAccent} stopOpacity="0.25" /><stop offset="100%" stopColor={hotAccent} stopOpacity="0" /></linearGradient></defs>
