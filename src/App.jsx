@@ -883,6 +883,28 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEn
           {/* ═══ SCREEN CONTENT — fills the screen like a real Game Boy ═══ */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: 0, position: "relative", zIndex: 10 }}>
 
+            {/* Trophy — leaderboard shortcut */}
+            <button
+              onClick={onLeaderboard}
+              style={{
+                position: "absolute", top: 8, right: 8,
+                background: "none", border: "none", cursor: "pointer",
+                padding: 6, opacity: entered ? 0.5 : 0,
+                transition: "opacity 0.6s ease 0.4s, transform 0.2s ease",
+                zIndex: 20,
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = "1"}
+              onMouseLeave={e => e.currentTarget.style.opacity = "0.5"}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c8a832" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2" />
+                <path d="M18 9h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2" />
+                <path d="M6 3h12v7a6 6 0 0 1-12 0V3z" />
+                <path d="M9 21h6" />
+                <path d="M12 16v5" />
+              </svg>
+            </button>
+
             {/* Title — centered hero */}
             <div style={{
               textAlign: "center",
@@ -2539,6 +2561,14 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
 
           {/* Share actions — pinned to bottom */}
           <div style={{ display: "flex", gap: 5, marginTop: 4, position: "relative", zIndex: 10, flexShrink: 0 }}>
+            {supabase && <button onClick={onLeaderboard} className="result-copy-btn" style={{
+              flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
+              letterSpacing: 1, color: "#888",
+              background: "#ffffff08",
+              border: "1px solid #ffffff12",
+              padding: "7px 0", borderRadius: 6, cursor: "pointer",
+              transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}>RANKS</button>}
             <a
               href={`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
               target="_blank" rel="noopener noreferrer"
