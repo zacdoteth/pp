@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0a0e18"/>
+  <!-- Subtle red vignette -->
+  <radialGradient id="g" cx="50%" cy="45%">
+    <stop offset="0%" stop-color="#e02020" stop-opacity="0.06"/>
+    <stop offset="100%" stop-color="#e02020" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <!-- THE -->
+  <text x="600" y="215" text-anchor="middle" font-family="monospace" font-size="22" letter-spacing="10" fill="#888">THE</text>
+  <!-- penis -->
+  <text x="600" y="340" text-anchor="middle" font-family="Georgia,serif" font-size="140" font-style="italic" font-weight="600" letter-spacing="8" fill="#f0ece8">penis</text>
+  <!-- GAME -->
+  <text x="600" y="395" text-anchor="middle" font-family="monospace" font-size="22" letter-spacing="10" fill="#888">GAME</text>
+  <!-- Tagline -->
+  <text x="600" y="470" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#555">scream it louder than everyone else</text>
+  <!-- Red accent line -->
+  <rect x="540" y="500" width="120" height="2" rx="1" fill="#e02020" opacity="0.4"/>
+</svg>

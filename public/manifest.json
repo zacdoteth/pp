@@ -1,0 +1,16 @@
+{
+  "name": "The Penis Game",
+  "short_name": "Penis Game",
+  "description": "Scream PENIS as loud as you can. You have 6.9 seconds.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e18",
+  "theme_color": "#0a0e18",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
