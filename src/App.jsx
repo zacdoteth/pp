@@ -1,9 +1,19 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { WebHaptics } from "web-haptics";
 
-const haptics = new WebHaptics();
-const haptic = (type) => { try { haptics.trigger(type); } catch {} };
+// Haptics — use native Vibration API with WebHaptics fallback
+let _haptics = null;
+const haptic = (type) => {
+  try {
+    if (navigator.vibrate) {
+      const ms = typeof type === "number" ? type : Array.isArray(type) ? type : type === "success" ? [20, 50, 20] : [15];
+      navigator.vibrate(ms);
+    } else {
+      if (!_haptics) { import("web-haptics").then(m => { _haptics = new m.WebHaptics(); }).catch(() => {}); }
+      _haptics?.trigger(type);
+    }
+  } catch {}
+};
 
 // ═══════════════════════════════════════════════════════════════
 // SHADER BACKGROUND — Refik Anadol-inspired generative visuals
@@ -107,12 +117,19 @@ void main(){
   O=vec4(col,1.);
 }`;
 
+// Reduced motion preference — check once, update on change
+let prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false;
+try { window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", e => { prefersReducedMotion = e.matches; }); } catch {}
+
 function ShaderBackground() {
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
   const t0 = useRef(performance.now());
 
   useEffect(() => {
+    // Skip shader entirely for reduced motion — just show static dark bg
+    if (prefersReducedMotion) return;
+
     const c = canvasRef.current;
     if (!c) return;
     const gl = c.getContext("webgl2", { alpha: false, antialias: false, preserveDrawingBuffer: false, powerPreference: "low-power" });
@@ -159,13 +176,13 @@ function ShaderBackground() {
     return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener("resize", resize); };
   }, []);
 
-  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none" }} />;
+  return <canvas ref={canvasRef} aria-hidden="true" style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none", willChange: "contents" }} />;
 }
 
 // ═══════════════════════════════════════════════════════════════
 // DEVICE FRAME — premium Nintendo Switch-quality handheld housing
 // ═══════════════════════════════════════════════════════════════
-function DeviceFrame({ children, controls, ledColor = "#e02020", ledActive = false, ledPulse = false, statusText, onStatusClick }) {
+const DeviceFrame = memo(function DeviceFrame({ children, controls, ledColor = "#e02020", ledActive = false, ledPulse = false, statusText, onStatusClick }) {
   // Fixed device dimensions — consistent across all screens like a real console
   const DEVICE_W = 380; // px — the "native" width of our device
   return (
@@ -411,7 +428,7 @@ function DeviceFrame({ children, controls, ledColor = "#e02020", ledActive = fal
       </div>
     </div>
   );
-}
+});
 
 // ═══════════════════════════════════════════════════════════════
 // THE PENIS GAME — play.fun edition
@@ -515,7 +532,7 @@ const CHART_POINTS = 120;
 const AUDIO_CAPTURE_CONSTRAINTS = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
 const VIDEO_CAPTURE_CONSTRAINTS = { facingMode: "user", width: { ideal: 720 }, height: { ideal: 1280 } };
 
-const FONT_LINK = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=JetBrains+Mono:wght@200;300;400;500&family=DM+Sans:wght@300;400;500&display=swap";
+// Fonts loaded via index.html <link rel="stylesheet"> for faster initial render
 
 // ═══════════════════════════════════════════════════════════════
 // PLAY.FUN SDK — hook into the platform
@@ -611,11 +628,9 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: "100vh" }}>
+    <main style={{ minHeight: "100dvh" }} role="main">
       <ShaderBackground />
-      <link href={FONT_LINK} rel="stylesheet" />
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      {/* Fonts loaded via index.html preload + stylesheet */}
 
       {screen === "home" && (
         <HomeScreen
@@ -647,7 +662,7 @@ export default function App() {
           onHome={() => setScreen("home")}
         />
       )}
-    </div>
+    </main>
   );
 }
 
@@ -793,6 +808,7 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEn
                     onClick={() => { haptic("nudge"); onPlay(); }}
                     onMouseEnter={() => setBtnHover(true)}
                     onMouseLeave={() => setBtnHover(false)}
+                    aria-label="Start the penis game"
                     style={{
                     width: 148, height: 148, borderRadius: "50%",
                     border: "none", cursor: "pointer", outline: "none",
@@ -886,6 +902,7 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEn
             {/* Trophy — leaderboard shortcut */}
             <button
               onClick={onLeaderboard}
+              aria-label="View leaderboard"
               style={{
                 position: "absolute", top: 8, right: 8,
                 background: "none", border: "none", cursor: "pointer",
@@ -1641,7 +1658,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
                     : "0 8px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.02)",
                   transition: "box-shadow 0.2s",
                 }}>
-                  <button onClick={isLive ? endGame : startGame} className="game-btn" style={{
+                  <button onClick={isLive ? endGame : startGame} className="game-btn" aria-label={isLive ? "Stop game" : "Start game"} style={{
                     width: 136, height: 136, borderRadius: "50%",
                     border: "none", cursor: "pointer", outline: "none",
                     WebkitTapHighlightColor: "transparent",
@@ -3006,7 +3023,7 @@ function MiniSparkline({ data, width = 60, height = 28 }) {
   );
 }
 
-function LeaderboardEntry({ entry, position, isPlaying, onTogglePlay }) {
+const LeaderboardEntry = memo(function LeaderboardEntry({ entry, position, isPlaying, onTogglePlay }) {
   const peakDisp = entry.peak_db != null ? Math.max(0, 60 + entry.peak_db).toFixed(0) : "—";
   const posColor = position === 1 ? "#ffcc33" : position === 2 ? "#c0c0c0" : position === 3 ? "#cd7f32" : "#444";
 
@@ -3070,4 +3087,4 @@ function LeaderboardEntry({ entry, position, isPlaying, onTogglePlay }) {
       )}
     </div>
   );
-}
+});
