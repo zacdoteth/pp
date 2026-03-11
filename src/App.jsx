@@ -1395,7 +1395,8 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
     const norm = Math.max(0, Math.min(1, (db - MIN_DB) / (MAX_DB - MIN_DB)));
     setDbLevel(db); setRmsNorm(norm); shaderIntensity = norm;
     if (db > peakDbRef.current) { peakDbRef.current = db; setPeakDb(db); }
-    setBars(computeBars());
+    const currentBars = computeBars();
+    setBars(currentBars);
 
     chartRef.current.push(norm);
     setChartData(chartRef.current.slice(-CHART_POINTS));
@@ -1440,7 +1441,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
     }
 
     // Draw composite frame for video recording
-    drawCompositeFrame(scoreRef.current, db, peakDbRef.current, norm, elapsed, chartRef.current.slice(-CHART_POINTS), computeBars());
+    drawCompositeFrame(scoreRef.current, db, peakDbRef.current, norm, elapsed, chartRef.current.slice(-CHART_POINTS), currentBars);
 
     frameRef.current = requestAnimationFrame(loop);
   }, [computeRmsDb, computeBars, drawCompositeFrame]);
@@ -3000,7 +3001,9 @@ function LeaderboardScreen({ onPlay, onHome }) {
   );
 }
 
-function MiniSparkline({ data, width = 60, height = 28 }) {
+let _sparklineId = 0;
+const MiniSparkline = memo(function MiniSparkline({ data, width = 60, height = 28 }) {
+  const gradId = useRef(`sg${++_sparklineId}`).current;
   const scaled = scaleChart(data);
   if (!scaled || scaled.length < 2) return null;
 
@@ -3011,7 +3014,6 @@ function MiniSparkline({ data, width = 60, height = 28 }) {
   const points = scaled.map((v, i) => `${pad + i * step},${pad + h - v * h}`);
   const polyline = points.join(" ");
   const fillPoints = `${pad},${pad + h} ${polyline} ${pad + (scaled.length - 1) * step},${pad + h}`;
-  const gradId = `sg${Math.random().toString(36).slice(2, 6)}`;
 
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ flexShrink: 0, display: "block" }}>
@@ -3025,7 +3027,7 @@ function MiniSparkline({ data, width = 60, height = 28 }) {
       <polyline points={polyline} fill="none" stroke="#e02020" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
-}
+});
 
 const LeaderboardEntry = memo(function LeaderboardEntry({ entry, position, isPlaying, onTogglePlay }) {
   const peakDisp = entry.peak_db != null ? Math.max(0, 60 + entry.peak_db).toFixed(0) : "—";
