@@ -2912,8 +2912,9 @@ function LeaderboardScreen({ onPlay, onHome }) {
   return (
     <div style={{
       minHeight: "100vh", display: "flex", flexDirection: "column",
-      alignItems: "center", padding: "32px 16px 40px",
+      alignItems: "center", justifyContent: "center",
       background: "transparent", position: "relative", overflow: "hidden",
+      padding: "20px 16px",
     }}>
       {/* Grain + vignette */}
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 100, opacity: 0.02, /* grain */
@@ -2921,66 +2922,78 @@ function LeaderboardScreen({ onPlay, onHome }) {
       }} />
       <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 2, boxShadow: "inset 0 0 100px rgba(0,0,0,0.55)" }} />
 
-      <div style={{ position: "relative", zIndex: 10, width: "100%", maxWidth: 440, animation: "fadeIn 0.4s" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <h1 style={{
-            fontFamily: "'Cormorant Garamond', serif",
-            fontSize: 36, fontWeight: 300, fontStyle: "italic",
-            color: "#f0ece8", letterSpacing: 3, margin: 0, marginBottom: 4,
-          }}>hall of fame</h1>
-          <div style={{
-            fontFamily: "'JetBrains Mono'", fontSize: 8,
-            fontWeight: 300, letterSpacing: 3, color: "#666",
-          }}>TOP SCREAMERS — RANKED BY SCORE</div>
-        </div>
-
-        {/* Play button — always visible */}
-        <div style={{ marginBottom: 16 }}>
-          <button onClick={onPlay} className="lb-play-btn" style={{
-            width: "100%", fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 400,
-            fontStyle: "italic", color: "#f0ece8", background: "#e02020",
-            border: "none", padding: "13px 0", borderRadius: 8, cursor: "pointer",
-            boxShadow: "0 4px 20px #e0202044", letterSpacing: 1,
-            transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.2s ease",
-          }}>play again</button>
-        </div>
-
-        {/* Entries */}
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#666", letterSpacing: 2 }}>LOADING...</div>
+      <div style={{ position: "relative", zIndex: 10, animation: "fadeIn 0.4s" }}>
+        <DeviceFrame
+          ledActive ledPulse
+          ledColor="#ffcc33"
+          statusText="HALL OF FAME"
+          controls={
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <button onClick={onPlay} className="lb-play-btn" aria-label="Play again" style={{
+                fontFamily: "'Cormorant Garamond', serif", fontSize: 16, fontWeight: 400,
+                fontStyle: "italic", color: "#f0ece8", background: "#e02020",
+                border: "none", padding: "10px 32px", borderRadius: 8, cursor: "pointer",
+                boxShadow: "0 4px 20px #e0202044", letterSpacing: 1,
+                transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.2s ease",
+              }}>play again</button>
+              <button onClick={onHome} aria-label="Back to home" style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400,
+                letterSpacing: 3, color: "#555", padding: "4px 12px",
+                transition: "color 0.3s",
+              }}>HOME</button>
+            </div>
+          }
+        >
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: 8, flexShrink: 0 }}>
+            <h1 style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 28, fontWeight: 300, fontStyle: "italic",
+              color: "#f0ece8", letterSpacing: 3, margin: 0, marginBottom: 2,
+            }}>hall of fame</h1>
+            <div style={{
+              fontFamily: "'JetBrains Mono'", fontSize: 8,
+              fontWeight: 300, letterSpacing: 3, color: "#666",
+            }}>TOP SCREAMERS — RANKED BY SCORE</div>
           </div>
-        ) : entries.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <div style={{ fontFamily: "'Cormorant Garamond'", fontSize: 18, fontStyle: "italic", color: "#444", marginBottom: 8 }}>no screams yet</div>
-            <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#666", letterSpacing: 1 }}>be the first</div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {entries.map((entry, i) => (
-              <LeaderboardEntry
-                key={entry.id}
-                entry={entry}
-                position={i + 1}
-                isPlaying={playingId === entry.id}
-                onTogglePlay={() => togglePlay(entry)}
-              />
-            ))}
-          </div>
-        )}
 
-        {/* Load more */}
-        {hasMore && entries.length > 0 && !loading && (
-          <button onClick={loadMore} disabled={loadingMore} className="lb-loadmore-btn" style={{
-            width: "100%", padding: "12px 0", marginTop: 12,
-            borderRadius: 6, background: "#0e1018", border: "1px solid #14161f",
-            color: "#555", cursor: loadingMore ? "default" : "pointer",
-            fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 400, letterSpacing: 2,
-            transition: "border-color 0.3s ease, color 0.3s ease, background 0.3s ease",
-          }}>{loadingMore ? "..." : "LOAD MORE"}</button>
-        )}
-
+          {/* Entries — scrollable within device screen */}
+          <div style={{ flex: 1, overflowY: "auto", minHeight: 0, scrollbarWidth: "none", msOverflowStyle: "none" }}>
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "40px 0" }}>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#666", letterSpacing: 2 }}>LOADING...</div>
+              </div>
+            ) : entries.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 0" }}>
+                <div style={{ fontFamily: "'Cormorant Garamond'", fontSize: 18, fontStyle: "italic", color: "#444", marginBottom: 8 }}>no screams yet</div>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#666", letterSpacing: 1 }}>be the first</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {entries.map((entry, i) => (
+                  <LeaderboardEntry
+                    key={entry.id}
+                    entry={entry}
+                    position={i + 1}
+                    isPlaying={playingId === entry.id}
+                    onTogglePlay={() => togglePlay(entry)}
+                  />
+                ))}
+                {/* Load more */}
+                {hasMore && !loading && (
+                  <button onClick={loadMore} disabled={loadingMore} className="lb-loadmore-btn" style={{
+                    width: "100%", padding: "10px 0", marginTop: 4,
+                    borderRadius: 5, background: "#0e1018", border: "1px solid #14161f",
+                    color: "#555", cursor: loadingMore ? "default" : "pointer",
+                    fontFamily: "'JetBrains Mono'", fontSize: 9, fontWeight: 400, letterSpacing: 2,
+                    transition: "border-color 0.3s ease, color 0.3s ease, background 0.3s ease",
+                  }}>{loadingMore ? "..." : "LOAD MORE"}</button>
+                )}
+              </div>
+            )}
+          </div>
+        </DeviceFrame>
       </div>
 
       <style>{`
