@@ -1,6 +1,20 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+// roundRect polyfill for older Safari/browsers
+if (typeof CanvasRenderingContext2D !== "undefined" && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    const radii = Array.isArray(r) ? r : [r, r, r, r];
+    const [tl, tr, br, bl] = radii.map(v => Math.min(v || 0, w / 2, h / 2));
+    this.moveTo(x + tl, y);
+    this.lineTo(x + w - tr, y); this.arcTo(x + w, y, x + w, y + tr, tr);
+    this.lineTo(x + w, y + h - br); this.arcTo(x + w, y + h, x + w - br, y + h, br);
+    this.lineTo(x + bl, y + h); this.arcTo(x, y + h, x, y + h - bl, bl);
+    this.lineTo(x, y + tl); this.arcTo(x, y, x + tl, y, tl);
+    this.closePath(); return this;
+  };
+}
+
 // Haptics — use native Vibration API with WebHaptics fallback
 let _haptics = null;
 const haptic = (type) => {
@@ -1199,7 +1213,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
         ) || "video/webm";
         videoMimeRef.current = videoMime;
         try {
-          const vrec = new MediaRecorder(canvasStream, { mimeType: videoMime });
+          const vrec = new MediaRecorder(canvasStream, { mimeType: videoMime, videoBitsPerSecond: 4_000_000 });
           vrec.ondataavailable = (e) => { if (e.data.size > 0) videoChunksRef.current.push(e.data); };
           videoRecorderRef.current = vrec;
         } catch {}
@@ -1265,123 +1279,246 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
     if (!canvas || !ctx) return;
 
     const W = canvas.width, H = canvas.height;
+    const S = W / 720; // scale factor — all sizes relative to 720w
     const phase = getPhase(peakDb);
 
-    // Draw video frame (mirrored)
+    // ── Video frame (un-mirrored — shared recordings should read naturally) ──
     if (video && video.readyState >= 2) {
-      ctx.save();
-      ctx.translate(W, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, W, H);
-      ctx.restore();
+      const vw = video.videoWidth || W, vh = video.videoHeight || H;
+      const scale = Math.max(W / vw, H / vh);
+      const dw = vw * scale, dh = vh * scale;
+      ctx.drawImage(video, (W - dw) / 2, (H - dh) / 2, dw, dh);
     } else {
       ctx.fillStyle = "#0a0a10";
       ctx.fillRect(0, 0, W, H);
     }
 
-    // Dark overlay
+    // ── Cinematic gradient overlay — heavier at top/bottom for text legibility ──
     const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, "rgba(0,0,0,0.75)");
-    grad.addColorStop(0.4, "rgba(0,0,0,0.6)");
-    grad.addColorStop(1, "rgba(0,0,0,0.8)");
+    grad.addColorStop(0, "rgba(0,0,0,0.82)");
+    grad.addColorStop(0.15, "rgba(0,0,0,0.55)");
+    grad.addColorStop(0.5, "rgba(0,0,0,0.35)");
+    grad.addColorStop(0.75, "rgba(0,0,0,0.5)");
+    grad.addColorStop(1, "rgba(0,0,0,0.85)");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // "penis" text
-    const penisSize = Math.min(80, 48 + norm * 30);
-    ctx.font = `italic ${Math.min(700, 300 + norm * 500)} ${penisSize}px 'Cormorant Garamond', serif`;
-    ctx.textAlign = "center";
-    ctx.fillStyle = phase >= 5 ? "#fff" : phase >= 3 ? "#fff5f0" : "#f0ece8";
-    ctx.shadowColor = `rgba(224,32,32,${0.2 + norm * 0.4})`;
-    ctx.shadowBlur = 15 + norm * 40;
-    ctx.fillText("penis", W / 2, H * 0.22);
-    ctx.shadowBlur = 0;
+    // ── Subtle vignette ──
+    const vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.75);
+    vig.addColorStop(0, "rgba(0,0,0,0)");
+    vig.addColorStop(1, "rgba(0,0,0,0.35)");
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
 
-    // Hero score
-    const scoreSize = Math.min(100, 72 + norm * 30);
-    ctx.font = `600 ${scoreSize}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = "#e02020";
-    ctx.shadowColor = "rgba(224,32,32,0.3)";
-    ctx.shadowBlur = 30 + norm * 40;
-    ctx.fillText(Math.floor(score).toLocaleString(), W / 2, H * 0.42);
-    ctx.shadowBlur = 0;
+    ctx.textAlign = "center";
+
+    // ── "penis" title ──
+    const penisSize = S * Math.min(88, 52 + norm * 36);
+    const penisWeight = Math.min(700, 300 + norm * 500);
+    ctx.font = `italic ${penisWeight} ${penisSize}px 'Cormorant Garamond', serif`;
+    ctx.fillStyle = phase >= 5 ? "#fff" : phase >= 3 ? "#fff5f0" : "#f0ece8";
+    ctx.shadowColor = `rgba(224,32,32,${0.3 + norm * 0.5})`;
+    ctx.shadowBlur = S * (20 + norm * 50);
+    ctx.fillText("penis", W / 2, H * 0.15);
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+
+    // ── Hero score ──
+    const scoreSize = S * Math.min(120, 84 + norm * 36);
+    ctx.font = `700 ${scoreSize}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = "#fff";
+    ctx.shadowColor = "rgba(224,32,32,0.6)";
+    ctx.shadowBlur = S * (30 + norm * 50);
+    ctx.fillText(Math.floor(score).toLocaleString(), W / 2, H * 0.30);
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
 
     // POINTS label
-    ctx.font = "400 14px 'JetBrains Mono', monospace";
-    ctx.fillStyle = "#666";
-    ctx.letterSpacing = "5px";
-    ctx.fillText("POINTS", W / 2, H * 0.46);
+    ctx.font = `600 ${S * 16}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = "rgba(224,32,32,0.7)";
+    ctx.letterSpacing = `${S * 6}px`;
+    ctx.fillText("POINTS", W / 2, H * 0.33);
     ctx.letterSpacing = "0px";
 
-    // dB display
+    // ── Stats pill — frosted glass look ──
+    const pillY = H * 0.37, pillH = S * 80, pillW = W * 0.82;
+    const pillX = (W - pillW) / 2, pillR = S * 16;
+    ctx.beginPath();
+    ctx.roundRect(pillX, pillY, pillW, pillH, pillR);
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+    ctx.lineWidth = S * 1;
+    ctx.stroke();
+
+    // dB values inside pill
     const dbDisp = (60 + db).toFixed(0);
     const peakDisp = (60 + peakDb).toFixed(0);
-    ctx.font = "200 36px 'JetBrains Mono', monospace";
-    ctx.fillStyle = norm > 0.7 ? "#ff2222" : "#e02020";
-    ctx.fillText(`${dbDisp}dB`, W / 2 - 80, H * 0.56);
-    ctx.fillStyle = "#e8e4e0";
-    ctx.fillText(`${peakDisp}dB`, W / 2 + 80, H * 0.56);
+    const pillCY = pillY + pillH / 2;
 
-    ctx.font = "400 10px 'JetBrains Mono', monospace";
-    ctx.fillStyle = "#44444e";
-    ctx.fillText("VOLUME", W / 2 - 80, H * 0.52);
-    ctx.fillText("PEAK", W / 2 + 80, H * 0.52);
+    // Volume (left third)
+    ctx.font = `300 ${S * 12}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.fillText("VOLUME", W * 0.27, pillCY - S * 14);
+    ctx.font = `600 ${S * 34}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = norm > 0.7 ? "#ff4444" : "#e02020";
+    ctx.fillText(`${dbDisp}`, W * 0.27, pillCY + S * 18);
 
-    // Timer
+    // Divider
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    ctx.fillRect(W * 0.42, pillY + S * 12, S * 1.5, pillH - S * 24);
+
+    // Timer (center)
     const remaining = Math.max(0, GAME_DURATION - elapsed);
-    ctx.font = "200 24px 'JetBrains Mono', monospace";
-    ctx.fillStyle = remaining < 2 ? "#ff4444" : "#888";
-    ctx.fillText(`${remaining.toFixed(1)}s`, W / 2, H * 0.64);
+    ctx.font = `300 ${S * 12}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.fillText("TIME", W * 0.5, pillCY - S * 14);
+    ctx.font = `600 ${S * 34}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = remaining < 2 ? "#ff4444" : "#fff";
+    ctx.fillText(`${remaining.toFixed(1)}`, W * 0.5, pillCY + S * 18);
 
-    // Frequency bars
+    // Divider
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    ctx.fillRect(W * 0.58, pillY + S * 12, S * 1.5, pillH - S * 24);
+
+    // Peak (right third)
+    ctx.font = `300 ${S * 12}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.fillText("PEAK", W * 0.73, pillCY - S * 14);
+    ctx.font = `600 ${S * 34}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = "#e8e4e0";
+    ctx.fillText(`${peakDisp}`, W * 0.73, pillCY + S * 18);
+
+    // ── Frequency bars — rounded, gradient-colored ──
     if (barsArr && barsArr.length > 0) {
-      const barW = (W * 0.8) / barsArr.length;
-      const barMaxH = H * 0.08;
-      const barY = H * 0.72;
-      const barX0 = W * 0.1;
-      for (let i = 0; i < barsArr.length; i++) {
+      const barCount = barsArr.length;
+      const gap = S * 3;
+      const totalW = W * 0.78;
+      const barW = (totalW - (barCount - 1) * gap) / barCount;
+      const barMaxH = H * 0.1;
+      const barBaseY = H * 0.56;
+      const barX0 = (W - totalW) / 2;
+      const barR = Math.max(S * 1.5, barW / 2);
+      for (let i = 0; i < barCount; i++) {
         const v = barsArr[i];
-        const h = Math.max(1, v * barMaxH);
-        ctx.fillStyle = v > 0.7 ? "#ff2222" : v > 0.4 ? "#e02020" : "rgba(224,32,32,0.4)";
-        ctx.fillRect(barX0 + i * barW, barY - h, barW - 1, h);
+        const h = Math.max(S * 3, v * barMaxH);
+        const x = barX0 + i * (barW + gap);
+        const y = barBaseY - h;
+        // Per-bar gradient
+        const bGrad = ctx.createLinearGradient(0, y, 0, barBaseY);
+        if (v > 0.7) {
+          bGrad.addColorStop(0, "#ff4444");
+          bGrad.addColorStop(1, "#e02020");
+        } else if (v > 0.4) {
+          bGrad.addColorStop(0, "#e02020");
+          bGrad.addColorStop(1, "rgba(224,32,32,0.6)");
+        } else {
+          bGrad.addColorStop(0, "rgba(224,32,32,0.6)");
+          bGrad.addColorStop(1, "rgba(224,32,32,0.2)");
+        }
+        ctx.beginPath();
+        ctx.roundRect(x, y, barW, h, [barR, barR, 0, 0]);
+        ctx.fillStyle = bGrad;
+        ctx.fill();
       }
     }
 
-    // Chart
+    // ── Chart — smooth bezier curve, larger area ──
     if (chartArr && chartArr.length > 3) {
-      const cX0 = W * 0.08, cW2 = W * 0.84, cY0 = H * 0.78, cH2 = H * 0.12;
+      const cX0 = W * 0.06, cW2 = W * 0.88, cY0 = H * 0.62, cH2 = H * 0.22;
+
+      // Grid lines (subtle)
+      ctx.strokeStyle = "rgba(255,255,255,0.04)";
+      ctx.lineWidth = S * 1;
+      for (let g = 0; g <= 4; g++) {
+        const gy = cY0 + (g / 4) * cH2;
+        ctx.beginPath(); ctx.moveTo(cX0, gy); ctx.lineTo(cX0 + cW2, gy); ctx.stroke();
+      }
+
+      // Smooth bezier chart line
       ctx.beginPath();
+      const pts = [];
       for (let i = 0; i < chartArr.length; i++) {
         const x = cX0 + (i / (CHART_POINTS - 1)) * cW2;
         const y = cY0 + cH2 - chartArr[i] * cH2;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        pts.push({ x, y });
       }
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        const prev = pts[i - 1], cur = pts[i];
+        const cpx = (prev.x + cur.x) / 2;
+        ctx.quadraticCurveTo(prev.x + (cpx - prev.x) * 0.8, prev.y, cpx, (prev.y + cur.y) / 2);
+        ctx.quadraticCurveTo(cur.x - (cur.x - cpx) * 0.8, cur.y, cur.x, cur.y);
+      }
+      // Glow
+      ctx.strokeStyle = "rgba(224,32,32,0.3)";
+      ctx.lineWidth = S * 6;
+      ctx.stroke();
+      // Main line
       ctx.strokeStyle = "#e02020";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = S * 2.5;
       ctx.stroke();
 
-      // Fill under chart
-      ctx.lineTo(cX0 + ((chartArr.length - 1) / (CHART_POINTS - 1)) * cW2, cY0 + cH2);
-      ctx.lineTo(cX0, cY0 + cH2);
+      // Fill under curve
+      ctx.lineTo(pts[pts.length - 1].x, cY0 + cH2);
+      ctx.lineTo(pts[0].x, cY0 + cH2);
       ctx.closePath();
       const cGrad = ctx.createLinearGradient(0, cY0, 0, cY0 + cH2);
-      cGrad.addColorStop(0, "rgba(224,32,32,0.25)");
+      cGrad.addColorStop(0, "rgba(224,32,32,0.3)");
+      cGrad.addColorStop(0.6, "rgba(224,32,32,0.08)");
       cGrad.addColorStop(1, "rgba(224,32,32,0)");
       ctx.fillStyle = cGrad;
       ctx.fill();
 
       // $PENIS label
-      ctx.font = "400 12px 'JetBrains Mono', monospace";
-      ctx.fillStyle = "#33333c";
+      ctx.font = `500 ${S * 14}px 'JetBrains Mono', monospace`;
+      ctx.fillStyle = "rgba(224,32,32,0.5)";
       ctx.textAlign = "left";
-      ctx.fillText("$PENIS", cX0, cY0 - 4);
+      ctx.fillText("$PENIS", cX0 + S * 4, cY0 - S * 8);
       ctx.textAlign = "center";
+
+      // Current value dot
+      if (pts.length > 0) {
+        const last = pts[pts.length - 1];
+        ctx.beginPath();
+        ctx.arc(last.x, last.y, S * 5, 0, Math.PI * 2);
+        ctx.fillStyle = "#e02020";
+        ctx.shadowColor = "rgba(224,32,32,0.8)";
+        ctx.shadowBlur = S * 12;
+        ctx.fill();
+        ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(last.x, last.y, S * 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.fill();
+      }
     }
 
-    // THE PENIS GAME watermark
-    ctx.font = "300 12px 'JetBrains Mono', monospace";
-    ctx.fillStyle = "rgba(224,32,32,0.25)";
-    ctx.fillText("THE PENIS GAME", W / 2, H * 0.96);
+    // ── Bottom bar — branding + live indicator ──
+    const botY = H * 0.90;
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, botY, W, H - botY);
+
+    // LIVE dot
+    const dotR = S * 5;
+    const livePulse = 0.6 + Math.sin(elapsed * 6) * 0.4;
+    ctx.beginPath();
+    ctx.arc(W * 0.15, H * 0.94, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(224,32,32,${livePulse})`;
+    ctx.shadowColor = "rgba(224,32,32,0.6)";
+    ctx.shadowBlur = S * 8;
+    ctx.fill();
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+
+    ctx.font = `700 ${S * 14}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = `rgba(224,32,32,${0.5 + livePulse * 0.5})`;
+    ctx.textAlign = "left";
+    ctx.fillText("LIVE", W * 0.15 + S * 12, H * 0.945);
+
+    // THE PENIS GAME branding
+    ctx.font = `500 ${S * 13}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.textAlign = "right";
+    ctx.fillText("THE PENIS GAME", W * 0.88, H * 0.945);
+    ctx.textAlign = "center";
   }, []);
 
   // ─── GAME LOOP ───
@@ -2486,98 +2623,111 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
         >
           {/* ═══ VIDEO REPLAY — full screen background ═══ */}
           {hasVideo && videoUrlRef.current && (
-            <>
-              <video
-                src={videoUrlRef.current}
-                autoPlay loop muted playsInline
-                style={{
-                  position: "absolute", inset: 0,
-                  width: "100%", height: "100%",
-                  objectFit: "cover", zIndex: 1,
-                  transform: "scaleX(-1)",
-                  borderRadius: 20, pointerEvents: "none",
-                }}
-              />
-              <div style={{
-                position: "absolute", inset: 0, zIndex: 2,
-                background: "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.75) 100%)",
+            <video
+              src={videoUrlRef.current}
+              autoPlay loop muted playsInline
+              style={{
+                position: "absolute", inset: 0,
+                width: "100%", height: "100%",
+                objectFit: "cover", zIndex: 1,
                 borderRadius: 20, pointerEvents: "none",
-              }} />
-            </>
+              }}
+            />
           )}
 
-          {/* ═══ SCREEN CONTENT — result card (flex layout, no scroll) ═══ */}
-          <div
-            onClick={copyCard}
-            onMouseEnter={() => setCardHover(true)}
-            onMouseLeave={() => setCardHover(false)}
-            style={{ cursor: "pointer", position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}
-          >
-            {/* Copied overlay */}
-            <div style={{
-              position: "absolute", inset: 0, borderRadius: 8,
-              background: copied ? "rgba(34,204,102,0.1)" : "transparent",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              opacity: copied ? 1 : 0, transition: "opacity 0.15s",
-              pointerEvents: "none", zIndex: 5,
-            }}>
-              <span style={{
-                fontFamily: "'JetBrains Mono'", fontSize: 13, fontWeight: 500,
-                letterSpacing: 2, color: "#22cc66",
-                background: "#22cc6620", padding: "8px 20px", borderRadius: 8,
-              }}>COPIED!</span>
-            </div>
-
-            {/* Rank */}
-            <div style={{ textAlign: "center", marginBottom: 2 }}>
-              <div style={{ fontSize: 24, lineHeight: 1 }}>{result.rank.em}</div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, fontWeight: 300, fontStyle: "italic", color: "#f0ece8", letterSpacing: 2 }}>{result.rank.title}</div>
-            </div>
-
-            {/* Score — hero */}
-            <div style={{ textAlign: "center", marginBottom: 0, position: "relative" }}>
+          {/* ═══ SCREEN CONTENT ═══ */}
+          {hasVideo ? (
+            /* Video mode: clean replay, no text overlay — the recording already has the full HUD */
+            <div style={{ position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", minHeight: 0, padding: "0 12px 8px" }}>
+              {/* Copied overlay */}
               <div style={{
-                position: "absolute", top: "50%", left: "50%",
-                width: 200, height: 60,
-                transform: "translate(-50%, -50%)",
-                background: "radial-gradient(ellipse, rgba(224,32,32,0.06) 0%, transparent 70%)",
-                pointerEvents: "none",
-              }} />
-              <div style={{
-                fontFamily: "'JetBrains Mono'", fontSize: 48, fontWeight: 600,
-                color: "#e02020", lineHeight: 1,
-                textShadow: "0 0 40px #e0202033, 0 0 80px #e0202018",
-                position: "relative",
-              }}>{result.score.toLocaleString()}</div>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 5, color: "#666", marginTop: 1, fontWeight: 400, position: "relative" }}>POINTS</div>
-            </div>
-
-            {/* Peak dB */}
-            <div style={{ textAlign: "center", marginTop: 2 }}>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 400, letterSpacing: 2, color: "#555" }}>PEAK</div>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 16, fontWeight: 200, color: "#e8e4e0" }}>{Math.max(0, 60 + result.peakDb).toFixed(0)} dB</div>
-            </div>
-
-            {/* Chart — full width */}
-            {chartData.length > 3 && (
-              <div style={{ width: "100%", marginTop: 2 }}>
-                <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block", height: 24 }}>
-                  <defs>
-                    <linearGradient id="rcg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#e02020" stopOpacity="0.2" />
-                      <stop offset="100%" stopColor="#e02020" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  {chartFill && <path d={chartFill} fill="url(#rcg)" />}
-                  {chartPath && <path d={chartPath} fill="none" stroke="#e02020" strokeWidth="1.5" />}
-                  {chartData.length > 0 && (
-                    <circle cx={cW} cy={cH - chartData[chartData.length - 1] * cH * 0.9 - cH * 0.05} r="2.5" fill="#e02020"
-                      style={{ filter: "drop-shadow(0 0 4px #e02020)" }} />
-                  )}
-                </svg>
+                position: "absolute", inset: 0, borderRadius: 8,
+                background: copied ? "rgba(34,204,102,0.1)" : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                opacity: copied ? 1 : 0, transition: "opacity 0.15s",
+                pointerEvents: "none", zIndex: 15,
+              }}>
+                <span style={{
+                  fontFamily: "'JetBrains Mono'", fontSize: 13, fontWeight: 500,
+                  letterSpacing: 2, color: "#22cc66",
+                  background: "#22cc6620", padding: "8px 20px", borderRadius: 8,
+                }}>COPIED!</span>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            /* No-video mode: show the result card with score, rank, chart */
+            <div
+              onClick={copyCard}
+              onMouseEnter={() => setCardHover(true)}
+              onMouseLeave={() => setCardHover(false)}
+              style={{ cursor: "pointer", position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}
+            >
+              {/* Copied overlay */}
+              <div style={{
+                position: "absolute", inset: 0, borderRadius: 8,
+                background: copied ? "rgba(34,204,102,0.1)" : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                opacity: copied ? 1 : 0, transition: "opacity 0.15s",
+                pointerEvents: "none", zIndex: 5,
+              }}>
+                <span style={{
+                  fontFamily: "'JetBrains Mono'", fontSize: 13, fontWeight: 500,
+                  letterSpacing: 2, color: "#22cc66",
+                  background: "#22cc6620", padding: "8px 20px", borderRadius: 8,
+                }}>COPIED!</span>
+              </div>
+
+              {/* Rank */}
+              <div style={{ textAlign: "center", marginBottom: 2 }}>
+                <div style={{ fontSize: 24, lineHeight: 1 }}>{result.rank.em}</div>
+                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 16, fontWeight: 300, fontStyle: "italic", color: "#f0ece8", letterSpacing: 2 }}>{result.rank.title}</div>
+              </div>
+
+              {/* Score — hero */}
+              <div style={{ textAlign: "center", marginBottom: 0, position: "relative" }}>
+                <div style={{
+                  position: "absolute", top: "50%", left: "50%",
+                  width: 200, height: 60,
+                  transform: "translate(-50%, -50%)",
+                  background: "radial-gradient(ellipse, rgba(224,32,32,0.06) 0%, transparent 70%)",
+                  pointerEvents: "none",
+                }} />
+                <div style={{
+                  fontFamily: "'JetBrains Mono'", fontSize: 48, fontWeight: 600,
+                  color: "#e02020", lineHeight: 1,
+                  textShadow: "0 0 40px #e0202033, 0 0 80px #e0202018",
+                  position: "relative",
+                }}>{result.score.toLocaleString()}</div>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 5, color: "#666", marginTop: 1, fontWeight: 400, position: "relative" }}>POINTS</div>
+              </div>
+
+              {/* Peak dB */}
+              <div style={{ textAlign: "center", marginTop: 2 }}>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 8, fontWeight: 400, letterSpacing: 2, color: "#555" }}>PEAK</div>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 16, fontWeight: 200, color: "#e8e4e0" }}>{Math.max(0, 60 + result.peakDb).toFixed(0)} dB</div>
+              </div>
+
+              {/* Chart — full width */}
+              {chartData.length > 3 && (
+                <div style={{ width: "100%", marginTop: 2 }}>
+                  <svg width="100%" viewBox={`0 0 ${cW} ${cH}`} preserveAspectRatio="none" style={{ display: "block", height: 24 }}>
+                    <defs>
+                      <linearGradient id="rcg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#e02020" stopOpacity="0.2" />
+                        <stop offset="100%" stopColor="#e02020" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    {chartFill && <path d={chartFill} fill="url(#rcg)" />}
+                    {chartPath && <path d={chartPath} fill="none" stroke="#e02020" strokeWidth="1.5" />}
+                    {chartData.length > 0 && (
+                      <circle cx={cW} cy={cH - chartData[chartData.length - 1] * cH * 0.9 - cH * 0.05} r="2.5" fill="#e02020"
+                        style={{ filter: "drop-shadow(0 0 4px #e02020)" }} />
+                    )}
+                  </svg>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Share actions — pinned to bottom */}
           <div style={{ display: "flex", gap: 5, marginTop: 4, position: "relative", zIndex: 10, flexShrink: 0 }}>
