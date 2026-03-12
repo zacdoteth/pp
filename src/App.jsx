@@ -1387,43 +1387,9 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
     ctx.fillStyle = "#e8e4e0";
     ctx.fillText(`${peakDisp}`, W * 0.73, pillCY + S * 18);
 
-    // ── Frequency bars — rounded, gradient-colored ──
-    if (barsArr && barsArr.length > 0) {
-      const barCount = barsArr.length;
-      const gap = S * 3;
-      const totalW = W * 0.78;
-      const barW = (totalW - (barCount - 1) * gap) / barCount;
-      const barMaxH = H * 0.1;
-      const barBaseY = H * 0.56;
-      const barX0 = (W - totalW) / 2;
-      const barR = Math.max(S * 1.5, barW / 2);
-      for (let i = 0; i < barCount; i++) {
-        const v = barsArr[i];
-        const h = Math.max(S * 3, v * barMaxH);
-        const x = barX0 + i * (barW + gap);
-        const y = barBaseY - h;
-        // Per-bar gradient
-        const bGrad = ctx.createLinearGradient(0, y, 0, barBaseY);
-        if (v > 0.7) {
-          bGrad.addColorStop(0, "#ff4444");
-          bGrad.addColorStop(1, "#e02020");
-        } else if (v > 0.4) {
-          bGrad.addColorStop(0, "#e02020");
-          bGrad.addColorStop(1, "rgba(224,32,32,0.6)");
-        } else {
-          bGrad.addColorStop(0, "rgba(224,32,32,0.6)");
-          bGrad.addColorStop(1, "rgba(224,32,32,0.2)");
-        }
-        ctx.beginPath();
-        ctx.roundRect(x, y, barW, h, [barR, barR, 0, 0]);
-        ctx.fillStyle = bGrad;
-        ctx.fill();
-      }
-    }
-
-    // ── Chart — smooth bezier curve, larger area ──
+    // ── Chart — smooth bezier curve, tall area (replaces frequency bars) ──
     if (chartArr && chartArr.length > 3) {
-      const cX0 = W * 0.06, cW2 = W * 0.88, cY0 = H * 0.62, cH2 = H * 0.22;
+      const cX0 = W * 0.06, cW2 = W * 0.88, cY0 = H * 0.46, cH2 = H * 0.38;
 
       // Grid lines (subtle)
       ctx.strokeStyle = "rgba(255,255,255,0.04)";
@@ -1450,11 +1416,11 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
       }
       // Glow
       ctx.strokeStyle = "rgba(224,32,32,0.3)";
-      ctx.lineWidth = S * 6;
+      ctx.lineWidth = S * 8;
       ctx.stroke();
       // Main line
       ctx.strokeStyle = "#e02020";
-      ctx.lineWidth = S * 2.5;
+      ctx.lineWidth = S * 3.5;
       ctx.stroke();
 
       // Fill under curve
