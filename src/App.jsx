@@ -1000,40 +1000,60 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEn
 
           </div>
 
-          {/* REC toggle — bottom of screen */}
+          {/* FaceTime-style controls — bottom of screen */}
           <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 16,
             opacity: entered ? 1 : 0,
             transition: "opacity 0.8s ease 0.4s",
             flexShrink: 0, position: "relative", zIndex: 10,
+            padding: "4px 0",
           }}>
-            <span style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: videoEnabled ? "#e8e4e0" : "#555", letterSpacing: 1, fontWeight: 500, transition: "color 0.2s" }}>
-              REC
-            </span>
+            {/* Camera toggle */}
             <button
               onClick={() => {
                 if (cameraRequesting) return;
                 if (videoEnabled) { onDisableVideo(); } else { onEnableVideo(); }
               }}
-              aria-label={videoEnabled ? "Disable camera recording" : "Enable camera recording"}
+              aria-label={videoEnabled ? "Turn off camera" : "Turn on camera"}
               disabled={cameraRequesting}
               style={{
-                width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer",
-                background: videoEnabled ? "#e02020" : "#1a1820",
-                position: "relative", transition: "background 0.2s",
+                width: 44, height: 44, borderRadius: "50%", border: "none", cursor: "pointer",
+                background: videoEnabled ? "rgba(255,255,255,0.15)" : "rgba(224,32,32,0.9)",
+                display: "flex", alignItems: "center", justifyContent: "center",
                 outline: "none", WebkitTapHighlightColor: "transparent",
-                boxShadow: videoEnabled ? "0 0 8px #e0202033" : "inset 0 1px 2px rgba(0,0,0,0.4)",
-                opacity: cameraRequesting ? 0.7 : 1,
+                transition: "background 0.2s, transform 0.15s",
+                opacity: cameraRequesting ? 0.6 : 1,
+                backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
               }}
             >
-              <div style={{
-                width: 20, height: 20, borderRadius: "50%", background: "#e8e4e0",
-                position: "absolute", top: 2,
-                left: videoEnabled ? 22 : 2,
-                transition: "left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-              }} />
+              {videoEnabled ? (
+                /* Camera on icon */
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                </svg>
+              ) : (
+                /* Camera off icon — with slash */
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              )}
             </button>
+            {/* Mic indicator (always on — mic is required for the game) */}
+            <div
+              aria-label="Microphone active"
+              style={{
+                width: 44, height: 44, borderRadius: "50%",
+                background: "rgba(255,255,255,0.15)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+            </div>
           </div>
         </DeviceFrame>
       </div>
@@ -2238,9 +2258,48 @@ async function generateShareCard(result) {
   c.width = W; c.height = H;
   const ctx = c.getContext("2d");
 
-  // ─── BACKGROUND — matches on-screen card ───
-  ctx.fillStyle = "#0b0c12";
-  ctx.fillRect(0, 0, W, H);
+  // ─── BACKGROUND ───
+  // If video exists, grab a frame from it as background
+  if (result.videoBlob) {
+    try {
+      const frame = await new Promise((resolve, reject) => {
+        const vid = document.createElement("video");
+        vid.muted = true; vid.playsInline = true;
+        vid.preload = "auto";
+        const url = URL.createObjectURL(result.videoBlob);
+        vid.src = url;
+        vid.onloadeddata = () => {
+          // Seek to 40% through for an interesting frame
+          vid.currentTime = vid.duration * 0.4;
+        };
+        vid.onseeked = () => {
+          // Cover-fit video into canvas
+          const vw = vid.videoWidth, vh = vid.videoHeight;
+          const scale = Math.max(W / vw, H / vh);
+          const dw = vw * scale, dh = vh * scale;
+          ctx.drawImage(vid, (W - dw) / 2, (H - dh) / 2, dw, dh);
+          URL.revokeObjectURL(url);
+          resolve(true);
+        };
+        vid.onerror = () => { URL.revokeObjectURL(url); reject(); };
+        setTimeout(() => { URL.revokeObjectURL(url); reject(); }, 3000);
+      });
+    } catch {
+      ctx.fillStyle = "#0b0c12";
+      ctx.fillRect(0, 0, W, H);
+    }
+    // Heavy dark overlay so text is legible over the video frame
+    const og = ctx.createLinearGradient(0, 0, 0, H);
+    og.addColorStop(0, "rgba(0,0,0,0.82)");
+    og.addColorStop(0.3, "rgba(0,0,0,0.65)");
+    og.addColorStop(0.6, "rgba(0,0,0,0.6)");
+    og.addColorStop(1, "rgba(0,0,0,0.85)");
+    ctx.fillStyle = og;
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    ctx.fillStyle = "#0b0c12";
+    ctx.fillRect(0, 0, W, H);
+  }
 
   // Subtle noise grain
   ctx.globalAlpha = 0.012;
