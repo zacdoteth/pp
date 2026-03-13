@@ -1071,6 +1071,23 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEn
               )}
             </button>
           </div>
+          {/* Camera nudge — only when camera is off */}
+          {!videoEnabled && !cameraRequesting && (
+            <div
+              onClick={() => onEnableVideo()}
+              style={{
+                textAlign: "center", cursor: "pointer",
+                opacity: entered ? 0.7 : 0,
+                transition: "opacity 1s ease 1.2s",
+                flexShrink: 0, position: "relative", zIndex: 10,
+              }}
+            >
+              <span style={{
+                fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#e02020",
+                letterSpacing: 1, fontWeight: 500,
+              }}>turn on cam for a viral video</span>
+            </div>
+          )}
         </DeviceFrame>
       </div>
 
@@ -1307,7 +1324,7 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
     return r;
   }, []);
 
-  // ─── COMPOSITE FRAME — draws video + UI to canvas for recording ───
+  // ─── COMPOSITE FRAME — IG/TikTok filter-quality video overlay ───
   const drawCompositeFrame = useCallback((score, db, peakDb, norm, elapsed, chartArr, barsArr) => {
     const canvas = compositeCanvasRef.current;
     const ctx = compositeCtxRef.current;
@@ -1315,10 +1332,23 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
     if (!canvas || !ctx) return;
 
     const W = canvas.width, H = canvas.height;
-    const S = W / 720; // scale factor — all sizes relative to 720w
+    const S = W / 720;
     const phase = getPhase(peakDb);
+    const remaining = Math.max(0, GAME_DURATION - elapsed);
+    const progress = Math.min(1, elapsed / GAME_DURATION);
 
-    // ── Video frame (un-mirrored — shared recordings should read naturally) ──
+    // Helper: outlined text (crisp over any background, like IG stickers)
+    const drawText = (text, x, y, { fill = "#fff", outline = "rgba(0,0,0,0.5)", outlineW = S * 3, shadow, shadowBlur: sb } = {}) => {
+      ctx.save();
+      if (shadow) { ctx.shadowColor = shadow; ctx.shadowBlur = sb || S * 10; }
+      if (outlineW > 0) { ctx.strokeStyle = outline; ctx.lineWidth = outlineW; ctx.lineJoin = "round"; ctx.strokeText(text, x, y); }
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+      ctx.fillStyle = fill;
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    };
+
+    // ── Video frame ──
     if (video && video.readyState >= 2) {
       const vw = video.videoWidth || W, vh = video.videoHeight || H;
       const scale = Math.max(W / vw, H / vh);
@@ -1329,113 +1359,125 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
       ctx.fillRect(0, 0, W, H);
     }
 
-    // ── Cinematic gradient overlay — heavier at top/bottom for text legibility ──
+    // ── Lighter cinematic overlay — let the face show through ──
     const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, "rgba(0,0,0,0.82)");
-    grad.addColorStop(0.15, "rgba(0,0,0,0.55)");
-    grad.addColorStop(0.5, "rgba(0,0,0,0.35)");
-    grad.addColorStop(0.75, "rgba(0,0,0,0.5)");
-    grad.addColorStop(1, "rgba(0,0,0,0.85)");
+    grad.addColorStop(0, "rgba(0,0,0,0.7)");
+    grad.addColorStop(0.2, "rgba(0,0,0,0.25)");
+    grad.addColorStop(0.55, "rgba(0,0,0,0.15)");
+    grad.addColorStop(0.75, "rgba(0,0,0,0.35)");
+    grad.addColorStop(1, "rgba(0,0,0,0.8)");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
 
-    // ── Subtle vignette ──
-    const vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.75);
+    // Subtle vignette
+    const vig = ctx.createRadialGradient(W / 2, H * 0.4, H * 0.15, W / 2, H * 0.4, H * 0.7);
     vig.addColorStop(0, "rgba(0,0,0,0)");
-    vig.addColorStop(1, "rgba(0,0,0,0.35)");
+    vig.addColorStop(1, "rgba(0,0,0,0.3)");
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, W, H);
 
+    // ── Audio-reactive edge glow ──
+    if (norm > 0.1) {
+      const edgeGrad = ctx.createLinearGradient(0, 0, 0, H);
+      edgeGrad.addColorStop(0, `rgba(224,32,32,${norm * 0.15})`);
+      edgeGrad.addColorStop(0.5, "rgba(224,32,32,0)");
+      edgeGrad.addColorStop(1, `rgba(224,32,32,${norm * 0.1})`);
+      ctx.fillStyle = edgeGrad;
+      ctx.fillRect(0, 0, S * 3, H);
+      ctx.fillRect(W - S * 3, 0, S * 3, H);
+    }
+
     ctx.textAlign = "center";
 
-    // ── "penis" title ──
-    const penisSize = S * Math.min(88, 52 + norm * 36);
+    // ══════════════════════════════════════════
+    // TOP SECTION — title + score (compact)
+    // ══════════════════════════════════════════
+
+    // "penis" title
+    const penisSize = S * Math.min(72, 44 + norm * 28);
     const penisWeight = Math.min(700, 300 + norm * 500);
     ctx.font = `italic ${penisWeight} ${penisSize}px 'Cormorant Garamond', serif`;
-    ctx.fillStyle = phase >= 5 ? "#fff" : phase >= 3 ? "#fff5f0" : "#f0ece8";
-    ctx.shadowColor = `rgba(224,32,32,${0.3 + norm * 0.5})`;
-    ctx.shadowBlur = S * (20 + norm * 50);
-    ctx.fillText("penis", W / 2, H * 0.15);
-    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+    drawText("penis", W / 2, H * 0.09, {
+      fill: phase >= 5 ? "#fff" : "#f0ece8",
+      shadow: `rgba(224,32,32,${0.3 + norm * 0.5})`,
+      shadowBlur: S * (15 + norm * 40),
+      outlineW: S * 2,
+    });
 
-    // ── Hero score ──
-    const scoreSize = S * Math.min(120, 84 + norm * 36);
+    // Hero score
+    const scoreSize = S * Math.min(100, 72 + norm * 28);
     ctx.font = `700 ${scoreSize}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = "#fff";
-    ctx.shadowColor = "rgba(224,32,32,0.6)";
-    ctx.shadowBlur = S * (30 + norm * 50);
-    ctx.fillText(Math.floor(score).toLocaleString(), W / 2, H * 0.30);
-    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+    drawText(Math.floor(score).toLocaleString(), W / 2, H * 0.20, {
+      fill: "#fff",
+      shadow: `rgba(224,32,32,${0.4 + norm * 0.4})`,
+      shadowBlur: S * (20 + norm * 40),
+      outlineW: S * 3,
+    });
 
     // POINTS label
-    ctx.font = `600 ${S * 16}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = "rgba(224,32,32,0.7)";
-    ctx.letterSpacing = `${S * 6}px`;
-    ctx.fillText("POINTS", W / 2, H * 0.33);
+    ctx.font = `600 ${S * 13}px 'JetBrains Mono', monospace`;
+    ctx.letterSpacing = `${S * 5}px`;
+    drawText("POINTS", W / 2, H * 0.225, { fill: "rgba(224,32,32,0.8)", outlineW: S * 1.5 });
     ctx.letterSpacing = "0px";
 
-    // ── Stats pill — frosted glass look ──
-    const pillY = H * 0.37, pillH = S * 80, pillW = W * 0.82;
-    const pillX = (W - pillW) / 2, pillR = S * 16;
+    // ══════════════════════════════════════════
+    // LEFT — Circular countdown timer (TikTok-style)
+    // ══════════════════════════════════════════
+    const ringCX = W * 0.15, ringCY = H * 0.30, ringR = S * 32;
+
+    // Ring track
     ctx.beginPath();
-    ctx.roundRect(pillX, pillY, pillW, pillH, pillR);
-    ctx.fillStyle = "rgba(255,255,255,0.07)";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.1)";
-    ctx.lineWidth = S * 1;
+    ctx.arc(ringCX, ringCY, ringR, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.lineWidth = S * 3;
     ctx.stroke();
 
-    // dB values inside pill
+    // Ring progress (countdown — fills as time runs out)
+    ctx.beginPath();
+    const startAngle = -Math.PI / 2;
+    ctx.arc(ringCX, ringCY, ringR, startAngle, startAngle + (1 - progress) * Math.PI * 2, false);
+    ctx.strokeStyle = remaining < 2 ? "#ff4444" : "#fff";
+    ctx.lineWidth = S * 3;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    ctx.lineCap = "butt";
+
+    // Time text inside ring
+    ctx.font = `700 ${S * 22}px 'JetBrains Mono', monospace`;
+    drawText(remaining.toFixed(1), ringCX, ringCY + S * 8, {
+      fill: remaining < 2 ? "#ff4444" : "#fff",
+      outlineW: S * 2,
+    });
+
+    // ══════════════════════════════════════════
+    // RIGHT — dB meter + peak
+    // ══════════════════════════════════════════
+    const statX = W * 0.83;
+
+    // Volume
+    ctx.font = `300 ${S * 10}px 'JetBrains Mono', monospace`;
+    drawText("VOL", statX, H * 0.275, { fill: "rgba(255,255,255,0.5)", outlineW: S * 1 });
+    ctx.font = `700 ${S * 26}px 'JetBrains Mono', monospace`;
     const dbDisp = (60 + db).toFixed(0);
+    drawText(dbDisp, statX, H * 0.305, {
+      fill: norm > 0.7 ? "#ff4444" : "#e02020",
+      outlineW: S * 2,
+    });
+
+    // Peak
+    ctx.font = `300 ${S * 10}px 'JetBrains Mono', monospace`;
+    drawText("PEAK", statX, H * 0.335, { fill: "rgba(255,255,255,0.5)", outlineW: S * 1 });
+    ctx.font = `700 ${S * 22}px 'JetBrains Mono', monospace`;
     const peakDisp = (60 + peakDb).toFixed(0);
-    const pillCY = pillY + pillH / 2;
+    drawText(`${peakDisp}dB`, statX, H * 0.36, { fill: "#e8e4e0", outlineW: S * 2 });
 
-    // Volume (left third)
-    ctx.font = `300 ${S * 12}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.fillText("VOLUME", W * 0.27, pillCY - S * 14);
-    ctx.font = `600 ${S * 34}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = norm > 0.7 ? "#ff4444" : "#e02020";
-    ctx.fillText(`${dbDisp}`, W * 0.27, pillCY + S * 18);
-
-    // Divider
-    ctx.fillStyle = "rgba(255,255,255,0.1)";
-    ctx.fillRect(W * 0.42, pillY + S * 12, S * 1.5, pillH - S * 24);
-
-    // Timer (center)
-    const remaining = Math.max(0, GAME_DURATION - elapsed);
-    ctx.font = `300 ${S * 12}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.fillText("TIME", W * 0.5, pillCY - S * 14);
-    ctx.font = `600 ${S * 34}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = remaining < 2 ? "#ff4444" : "#fff";
-    ctx.fillText(`${remaining.toFixed(1)}`, W * 0.5, pillCY + S * 18);
-
-    // Divider
-    ctx.fillStyle = "rgba(255,255,255,0.1)";
-    ctx.fillRect(W * 0.58, pillY + S * 12, S * 1.5, pillH - S * 24);
-
-    // Peak (right third)
-    ctx.font = `300 ${S * 12}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.fillText("PEAK", W * 0.73, pillCY - S * 14);
-    ctx.font = `600 ${S * 34}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = "#e8e4e0";
-    ctx.fillText(`${peakDisp}`, W * 0.73, pillCY + S * 18);
-
-    // ── Chart — smooth bezier curve, tall area (replaces frequency bars) ──
+    // ══════════════════════════════════════════
+    // CHART — large, bottom half
+    // ══════════════════════════════════════════
     if (chartArr && chartArr.length > 3) {
-      const cX0 = W * 0.06, cW2 = W * 0.88, cY0 = H * 0.46, cH2 = H * 0.38;
+      const cX0 = W * 0.05, cW2 = W * 0.90, cY0 = H * 0.42, cH2 = H * 0.42;
 
-      // Grid lines (subtle)
-      ctx.strokeStyle = "rgba(255,255,255,0.04)";
-      ctx.lineWidth = S * 1;
-      for (let g = 0; g <= 4; g++) {
-        const gy = cY0 + (g / 4) * cH2;
-        ctx.beginPath(); ctx.moveTo(cX0, gy); ctx.lineTo(cX0 + cW2, gy); ctx.stroke();
-      }
-
-      // Smooth bezier chart line
+      // Smooth bezier chart
       ctx.beginPath();
       const pts = [];
       for (let i = 0; i < chartArr.length; i++) {
@@ -1450,9 +1492,10 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
         ctx.quadraticCurveTo(prev.x + (cpx - prev.x) * 0.8, prev.y, cpx, (prev.y + cur.y) / 2);
         ctx.quadraticCurveTo(cur.x - (cur.x - cpx) * 0.8, cur.y, cur.x, cur.y);
       }
-      // Glow
-      ctx.strokeStyle = "rgba(224,32,32,0.3)";
-      ctx.lineWidth = S * 8;
+
+      // Wide glow
+      ctx.strokeStyle = `rgba(224,32,32,${0.15 + norm * 0.2})`;
+      ctx.lineWidth = S * 10;
       ctx.stroke();
       // Main line
       ctx.strokeStyle = "#e02020";
@@ -1464,27 +1507,27 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
       ctx.lineTo(pts[0].x, cY0 + cH2);
       ctx.closePath();
       const cGrad = ctx.createLinearGradient(0, cY0, 0, cY0 + cH2);
-      cGrad.addColorStop(0, "rgba(224,32,32,0.3)");
-      cGrad.addColorStop(0.6, "rgba(224,32,32,0.08)");
+      cGrad.addColorStop(0, `rgba(224,32,32,${0.2 + norm * 0.15})`);
+      cGrad.addColorStop(0.5, "rgba(224,32,32,0.05)");
       cGrad.addColorStop(1, "rgba(224,32,32,0)");
       ctx.fillStyle = cGrad;
       ctx.fill();
 
       // $PENIS label
-      ctx.font = `500 ${S * 14}px 'JetBrains Mono', monospace`;
-      ctx.fillStyle = "rgba(224,32,32,0.5)";
+      ctx.font = `500 ${S * 13}px 'JetBrains Mono', monospace`;
       ctx.textAlign = "left";
-      ctx.fillText("$PENIS", cX0 + S * 4, cY0 - S * 8);
+      drawText("$PENIS", cX0 + S * 4, cY0 - S * 6, { fill: "rgba(224,32,32,0.6)", outlineW: S * 1.5 });
       ctx.textAlign = "center";
 
-      // Current value dot
+      // Current value dot — pulsing with audio
       if (pts.length > 0) {
         const last = pts[pts.length - 1];
+        const dotSize = S * (4 + norm * 3);
         ctx.beginPath();
-        ctx.arc(last.x, last.y, S * 5, 0, Math.PI * 2);
+        ctx.arc(last.x, last.y, dotSize, 0, Math.PI * 2);
         ctx.fillStyle = "#e02020";
-        ctx.shadowColor = "rgba(224,32,32,0.8)";
-        ctx.shadowBlur = S * 12;
+        ctx.shadowColor = "rgba(224,32,32,0.9)";
+        ctx.shadowBlur = S * (10 + norm * 15);
         ctx.fill();
         ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
         ctx.beginPath();
@@ -1494,32 +1537,30 @@ function PenisGame({ onGameEnd, autoStart, videoEnabled }) {
       }
     }
 
-    // ── Bottom bar — branding + live indicator ──
-    const botY = H * 0.90;
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(0, botY, W, H - botY);
+    // ══════════════════════════════════════════
+    // BOTTOM BAR — LIVE badge + branding
+    // ══════════════════════════════════════════
+    // Frosted bottom strip
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(0, H * 0.90, W, H * 0.10);
 
-    // LIVE dot
-    const dotR = S * 5;
+    // LIVE pill
     const livePulse = 0.6 + Math.sin(elapsed * 6) * 0.4;
+    const liveX = W * 0.12, liveY = H * 0.945;
     ctx.beginPath();
-    ctx.arc(W * 0.15, H * 0.94, dotR, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(224,32,32,${livePulse})`;
-    ctx.shadowColor = "rgba(224,32,32,0.6)";
-    ctx.shadowBlur = S * 8;
+    ctx.roundRect(liveX - S * 30, liveY - S * 12, S * 60, S * 22, S * 11);
+    ctx.fillStyle = `rgba(224,32,32,${0.7 + livePulse * 0.3})`;
     ctx.fill();
-    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+    ctx.font = `800 ${S * 12}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.fillText("LIVE", liveX, liveY + S * 4.5);
 
-    ctx.font = `700 ${S * 14}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = `rgba(224,32,32,${0.5 + livePulse * 0.5})`;
-    ctx.textAlign = "left";
-    ctx.fillText("LIVE", W * 0.15 + S * 12, H * 0.945);
-
-    // THE PENIS GAME branding
-    ctx.font = `500 ${S * 13}px 'JetBrains Mono', monospace`;
-    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    // Branding
+    ctx.font = `500 ${S * 12}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
     ctx.textAlign = "right";
-    ctx.fillText("THE PENIS GAME", W * 0.88, H * 0.945);
+    ctx.fillText("THE PENIS GAME", W * 0.90, H * 0.949);
     ctx.textAlign = "center";
   }, []);
 
