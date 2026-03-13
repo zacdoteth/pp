@@ -2259,30 +2259,65 @@ async function generateShareCard(result) {
   const ctx = c.getContext("2d");
 
   // ─── BACKGROUND ───
-  // If video exists, grab a frame from it as background
+  // If video exists, sample several frames and pick the brightest (most expressive)
   if (result.videoBlob) {
     try {
-      const frame = await new Promise((resolve, reject) => {
+      await new Promise((resolve, reject) => {
         const vid = document.createElement("video");
         vid.muted = true; vid.playsInline = true;
         vid.preload = "auto";
         const url = URL.createObjectURL(result.videoBlob);
         vid.src = url;
-        vid.onloadeddata = () => {
-          // Seek to 40% through for an interesting frame
-          vid.currentTime = vid.duration * 0.4;
+
+        // Sample 5 frames at 20%, 35%, 50%, 65%, 80% — pick brightest
+        const samplePcts = [0.2, 0.35, 0.5, 0.65, 0.8];
+        const samples = [];
+        let idx = 0;
+        const tmpCanvas = document.createElement("canvas");
+        tmpCanvas.width = 160; tmpCanvas.height = 160; // small for fast brightness calc
+        const tmpCtx = tmpCanvas.getContext("2d", { willReadFrequently: true });
+
+        const grabFrame = () => {
+          // Draw small version for brightness measurement
+          tmpCtx.drawImage(vid, 0, 0, 160, 160);
+          const imgData = tmpCtx.getImageData(0, 0, 160, 160).data;
+          let brightness = 0;
+          // Sample every 16th pixel for speed
+          for (let p = 0; p < imgData.length; p += 64) {
+            brightness += imgData[p] * 0.299 + imgData[p + 1] * 0.587 + imgData[p + 2] * 0.114;
+          }
+          // Create full-res ImageBitmap for the winner later
+          samples.push({ time: vid.currentTime, brightness });
+          idx++;
+          if (idx < samplePcts.length) {
+            vid.currentTime = vid.duration * samplePcts[idx];
+          } else {
+            // Pick the brightest frame
+            samples.sort((a, b) => b.brightness - a.brightness);
+            vid.currentTime = samples[0].time;
+          }
         };
+
+        let seekCount = 0;
         vid.onseeked = () => {
-          // Cover-fit video into canvas
-          const vw = vid.videoWidth, vh = vid.videoHeight;
-          const scale = Math.max(W / vw, H / vh);
-          const dw = vw * scale, dh = vh * scale;
-          ctx.drawImage(vid, (W - dw) / 2, (H - dh) / 2, dw, dh);
-          URL.revokeObjectURL(url);
-          resolve(true);
+          seekCount++;
+          if (seekCount <= samplePcts.length) {
+            grabFrame();
+          } else {
+            // Final seek — draw the best frame to the share card
+            const vw = vid.videoWidth, vh = vid.videoHeight;
+            const scale = Math.max(W / vw, H / vh);
+            const dw = vw * scale, dh = vh * scale;
+            ctx.drawImage(vid, (W - dw) / 2, (H - dh) / 2, dw, dh);
+            URL.revokeObjectURL(url);
+            resolve(true);
+          }
+        };
+        vid.onloadeddata = () => {
+          vid.currentTime = vid.duration * samplePcts[0];
         };
         vid.onerror = () => { URL.revokeObjectURL(url); reject(); };
-        setTimeout(() => { URL.revokeObjectURL(url); reject(); }, 3000);
+        setTimeout(() => { URL.revokeObjectURL(url); reject(); }, 5000);
       });
     } catch {
       ctx.fillStyle = "#0b0c12";
