@@ -1086,7 +1086,7 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEn
               <span style={{
                 fontFamily: "'Cormorant Garamond', serif", fontSize: 12, color: "#777",
                 fontStyle: "italic", fontWeight: 300,
-              }}>show your face, coward</span>
+              }}>record it — you know you want to</span>
             </div>
           )}
         </DeviceFrame>
