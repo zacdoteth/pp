@@ -1077,15 +1077,16 @@ function HomeScreen({ onPlay, onLeaderboard, videoEnabled, videoSetupState, onEn
               onClick={() => onEnableVideo()}
               style={{
                 textAlign: "center", cursor: "pointer",
-                opacity: entered ? 0.7 : 0,
-                transition: "opacity 1s ease 1.2s",
+                opacity: entered ? 0.5 : 0,
+                transition: "opacity 1s ease 1.5s",
                 flexShrink: 0, position: "relative", zIndex: 10,
+                marginTop: -2,
               }}
             >
               <span style={{
-                fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#e02020",
-                letterSpacing: 1, fontWeight: 500,
-              }}>turn on cam for a viral video</span>
+                fontFamily: "'Cormorant Garamond', serif", fontSize: 12, color: "#777",
+                fontStyle: "italic", fontWeight: 300,
+              }}>show your face, coward</span>
             </div>
           )}
         </DeviceFrame>
