@@ -2676,70 +2676,130 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
           statusText={supabase ? "LEADERBOARD" : undefined}
           onStatusClick={supabase ? onLeaderboard : undefined}
           controls={
-            <div style={{ position: "relative" }}>
-              {/* Glow ring */}
-              <div style={{
-                position: "absolute", inset: -16, borderRadius: "50%",
-                background: "transparent", pointerEvents: "none",
-                boxShadow: "0 0 20px #e0202008, 0 0 40px #e0202004",
-                animation: "breathe 3s ease-in-out infinite",
-              }} />
-              {/* Pulse ring */}
-              <div style={{
-                position: "absolute", inset: -8, borderRadius: "50%",
-                border: "1px solid #e020200a", pointerEvents: "none",
-                animation: "pulseRing 2.5s ease-in-out infinite",
-              }} />
-              {/* Button housing */}
-              <div style={{
-                width: 176, height: 176, borderRadius: "50%",
-                background: "linear-gradient(145deg, #1e1e28, #111116)",
-                border: "1px solid #222230",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 8px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.4)",
-              }}>
-                <button
-                  onClick={() => { haptic("nudge"); onAgain(); }}
-                  className="result-play-btn"
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "100%", maxWidth: 340 }}>
+              {/* Share buttons row */}
+              <div style={{ display: "flex", gap: 6, width: "100%" }}>
+                {supabase && <button onClick={onLeaderboard} className="result-copy-btn" style={{
+                  flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
+                  letterSpacing: 1, color: "#888",
+                  background: "#ffffff08",
+                  border: "1px solid #ffffff12",
+                  padding: "9px 0", borderRadius: 8, cursor: "pointer",
+                  transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}>RANKS</button>}
+                <a
+                  href={`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  onClick={() => { copyCard(); }}
+                  className="result-share-btn"
                   style={{
-                    width: 148, height: 148, borderRadius: "50%",
-                    border: "none", cursor: "pointer", outline: "none",
-                    position: "relative", zIndex: 50,
-                    WebkitTapHighlightColor: "transparent",
-                    background: "radial-gradient(circle at 38% 32%, #dd2828 0%, #b81818 35%, #8a1010 70%, #6a0c0c 100%)",
-                    boxShadow: "0 6px 20px rgba(200,20,20,0.15), 0 2px 6px rgba(0,0,0,0.35), inset 0 -5px 12px rgba(0,0,0,0.35), inset 0 5px 12px rgba(255,130,130,0.08)",
-                    animation: "buttonBreathe 3s ease-in-out infinite",
-                    display: "flex", flexDirection: "column",
-                    alignItems: "center", justifyContent: "center",
-                    overflow: "hidden",
-                    transition: "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.4s ease, box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-                  }}>
-                  {/* Specular highlight */}
-                  <div style={{
-                    position: "absolute", top: "6%", left: "14%",
-                    width: "44%", height: "24%", borderRadius: "50%",
-                    background: "radial-gradient(ellipse, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.06) 40%, transparent 70%)",
-                    pointerEvents: "none",
-                  }} />
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" style={{
-                    marginBottom: 7,
-                    filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))",
-                  }}>
-                    <path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 8 8" />
-                    <polyline points="17.65 2 17.65 6.35 13.3 6.35" />
-                  </svg>
-                  <span style={{
-                    fontFamily: "'DM Sans'", fontSize: 11,
-                    fontWeight: 600, letterSpacing: 3,
-                    color: "rgba(255,255,255,0.8)",
-                    textShadow: "0 1px 4px rgba(0,0,0,0.3)",
-                  }}>AGAIN</span>
-                </button>
+                    flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
+                    letterSpacing: 1, color: "#000", background: "#fff",
+                    border: "none", padding: "9px 0", borderRadius: 8, cursor: "pointer",
+                    textDecoration: "none", textAlign: "center", display: "block",
+                    transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+                  }}
+                >SHARE</a>
+                <button onClick={copyCard} className="result-copy-btn" style={{
+                  flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
+                  letterSpacing: 1, color: copied ? "#22cc66" : "#e02020",
+                  background: copied ? "#22cc6612" : "#e0202012",
+                  border: `1px solid ${copied ? "#22cc6630" : "#e0202030"}`,
+                  padding: "9px 0", borderRadius: 8, cursor: "pointer",
+                  transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}>{copied ? "COPIED!" : "COPY IMG"}</button>
+                {hasVideo && <button onClick={shareVideo} className="result-play-btn" style={{
+                  flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
+                  letterSpacing: 1, color: "#f0ece8", background: "#e02020",
+                  border: "none", padding: "9px 0", borderRadius: 8, cursor: "pointer",
+                  boxShadow: "0 2px 12px #e0202044",
+                  transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+                }}>SHARE VID</button>}
               </div>
+
+              {/* AGAIN button — compact for video mode, big for no-video */}
+              <button
+                onClick={() => { haptic("nudge"); onAgain(); }}
+                className="result-play-btn"
+                style={{
+                  width: "100%", padding: "12px 0", borderRadius: 10,
+                  border: "none", cursor: "pointer", outline: "none",
+                  WebkitTapHighlightColor: "transparent",
+                  background: "radial-gradient(circle at 50% 30%, #dd2828 0%, #b81818 40%, #8a1010 80%)",
+                  boxShadow: "0 4px 16px rgba(200,20,20,0.2), inset 0 -3px 8px rgba(0,0,0,0.3), inset 0 3px 8px rgba(255,130,130,0.08)",
+                  fontFamily: "'JetBrains Mono'", fontSize: 12, fontWeight: 600,
+                  letterSpacing: 3, color: "rgba(255,255,255,0.85)",
+                  textShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                  transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+                }}
+              >PLAY AGAIN</button>
+
+              {/* Leaderboard submit — below buttons */}
+              {supabase && !uploaded && (
+                <div style={{
+                  width: "100%", background: "#0a0c14", borderRadius: 8, padding: "8px 10px",
+                  border: "1px solid #14161f",
+                }}>
+                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 2, color: "#555", marginBottom: 6 }}>SUBMIT TO LEADERBOARD</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input
+                      type="text"
+                      placeholder="your name"
+                      value={playerName}
+                      onChange={e => setPlayerName(e.target.value.slice(0, 24))}
+                      maxLength={24}
+                      className="name-input"
+                      style={{
+                        flex: 1, padding: "8px 10px", borderRadius: 5,
+                        background: "#080a10", border: "1px solid #1a1c28",
+                        color: "#e8e4e0", fontFamily: "'DM Sans'", fontSize: 13,
+                        outline: "none",
+                        transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+                      }}
+                    />
+                    <button
+                      disabled={uploading}
+                      className="submit-btn"
+                      onClick={async () => {
+                        setUploading(true); setUploadError(null);
+                        const res = await uploadScream({
+                          score: result.score,
+                          peakDb: result.peakDb,
+                          rank: result.rank,
+                          duration: result.duration,
+                          chartData: result.chartData,
+                          audioBlob: result.audioBlob,
+                          playerName: playerName.trim() || "anonymous",
+                        });
+                        setUploading(false);
+                        if (res) { haptic("success"); setUploaded(true); } else { haptic("error"); setUploadError("failed — try again"); }
+                      }}
+                      style={{
+                        padding: "8px 14px", borderRadius: 5,
+                        background: uploading ? "#333" : "#e02020",
+                        border: "none", color: "#f0ece8", cursor: uploading ? "default" : "pointer",
+                        fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 400, letterSpacing: 1,
+                        whiteSpace: "nowrap",
+                        transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.3s ease",
+                      }}
+                    >{uploading ? "..." : "SUBMIT"}</button>
+                  </div>
+                  {uploadError && <div style={{ fontFamily: "'DM Sans'", fontSize: 12, color: "#ef4444", marginTop: 6 }}>{uploadError}</div>}
+                </div>
+              )}
+              {supabase && uploaded && (
+                <div style={{
+                  width: "100%", background: "#22cc6612", border: "1px solid #22cc6625",
+                  borderRadius: 8, padding: "8px 10px",
+                  textAlign: "center",
+                }}>
+                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#22cc66", letterSpacing: 1 }}>SUBMITTED TO LEADERBOARD</div>
+                </div>
+              )}
             </div>
           }
         >
-          {/* ═══ VIDEO REPLAY — full screen background ═══ */}
+          {/* ═══ VIDEO REPLAY — full screen, clean ═══ */}
           {hasVideo && videoUrlRef.current && (
             <video
               src={videoUrlRef.current}
@@ -2753,27 +2813,25 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
             />
           )}
 
-          {/* ═══ SCREEN CONTENT ═══ */}
-          {hasVideo ? (
-            /* Video mode: clean replay, no text overlay — the recording already has the full HUD */
-            <div style={{ position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", minHeight: 0, padding: "0 12px 8px" }}>
-              {/* Copied overlay */}
-              <div style={{
-                position: "absolute", inset: 0, borderRadius: 8,
-                background: copied ? "rgba(34,204,102,0.1)" : "transparent",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                opacity: copied ? 1 : 0, transition: "opacity 0.15s",
-                pointerEvents: "none", zIndex: 15,
-              }}>
-                <span style={{
-                  fontFamily: "'JetBrains Mono'", fontSize: 13, fontWeight: 500,
-                  letterSpacing: 2, color: "#22cc66",
-                  background: "#22cc6620", padding: "8px 20px", borderRadius: 8,
-                }}>COPIED!</span>
-              </div>
+          {/* Copied overlay (video mode) */}
+          {hasVideo && (
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: 20,
+              background: copied ? "rgba(34,204,102,0.15)" : "transparent",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              opacity: copied ? 1 : 0, transition: "opacity 0.2s",
+              pointerEvents: "none", zIndex: 15,
+            }}>
+              <span style={{
+                fontFamily: "'JetBrains Mono'", fontSize: 16, fontWeight: 600,
+                letterSpacing: 3, color: "#22cc66",
+                background: "rgba(0,0,0,0.7)", padding: "10px 24px", borderRadius: 12,
+              }}>COPIED!</span>
             </div>
-          ) : (
-            /* No-video mode: show the result card with score, rank, chart */
+          )}
+
+          {/* ═══ SCREEN CONTENT — no-video mode: result card ═══ */}
+          {!hasVideo && (
             <div
               onClick={copyCard}
               onMouseEnter={() => setCardHover(true)}
@@ -2844,160 +2902,55 @@ function ResultScreen({ result, onAgain, onHome, onLeaderboard }) {
                   </svg>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Share actions — pinned to bottom */}
-          <div style={{ display: "flex", gap: 5, marginTop: 4, position: "relative", zIndex: 10, flexShrink: 0 }}>
-            {supabase && <button onClick={onLeaderboard} className="result-copy-btn" style={{
-              flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
-              letterSpacing: 1, color: "#888",
-              background: "#ffffff08",
-              border: "1px solid #ffffff12",
-              padding: "7px 0", borderRadius: 6, cursor: "pointer",
-              transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-            }}>RANKS</button>}
-            <a
-              href={`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
-              target="_blank" rel="noopener noreferrer"
-              onClick={() => { copyCard(); }}
-              className="result-share-btn"
-              style={{
-                flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
-                letterSpacing: 1, color: "#000", background: "#fff",
-                border: "none", padding: "7px 0", borderRadius: 6, cursor: "pointer",
-                textDecoration: "none", textAlign: "center", display: "block",
-                transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
-              }}
-            >SHARE</a>
-            <button onClick={copyCard} className="result-copy-btn" style={{
-              flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
-              letterSpacing: 1, color: copied ? "#22cc66" : "#e02020",
-              background: copied ? "#22cc6612" : "#e0202012",
-              border: `1px solid ${copied ? "#22cc6630" : "#e0202030"}`,
-              padding: "7px 0", borderRadius: 6, cursor: "pointer",
-              transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-            }}>{copied ? "COPIED!" : "COPY IMG"}</button>
-            {hasVideo && <button onClick={shareVideo} className="result-play-btn" style={{
-              flex: 1, fontFamily: "'JetBrains Mono'", fontSize: 10, fontWeight: 500,
-              letterSpacing: 1, color: "#f0ece8", background: "#e02020",
-              border: "none", padding: "7px 0", borderRadius: 6, cursor: "pointer",
-              boxShadow: "0 2px 12px #e0202044",
-              transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
-            }}>SHARE VID</button>}
-          </div>
-
-          {/* Audio playback — compact, pinned bottom */}
-          {result.audioBlob && (
-            <div style={{
-              display: "flex", alignItems: "center", gap: 6, marginTop: 4, flexShrink: 0,
-              background: hasVideo ? "rgba(10,12,20,0.8)" : "#0a0c14", borderRadius: 5, padding: "5px 8px",
-              border: `1px solid ${hasVideo ? "rgba(20,22,31,0.6)" : "#14161f"}`,
-              position: "relative", zIndex: 10,
-            }}>
-              <button onClick={togglePlay} className="audio-play-btn" style={{
-                width: 32, height: 32, borderRadius: "50%",
-                background: playing ? "#e02020" : "#1a1c28",
-                border: `1px solid ${playing ? "#e02020" : "#22242e"}`,
-                color: "#f0ece8", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 10, flexShrink: 0,
-                boxShadow: playing ? "0 0 8px #e0202033" : "none",
-                transition: "background 0.2s ease, border-color 0.2s ease, box-shadow 0.3s ease",
-              }}>
-                {playing ? (
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><rect x="1" y="1" width="3" height="8" rx="0.5" /><rect x="6" y="1" width="3" height="8" rx="0.5" /></svg>
-                ) : (
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4V1z" /></svg>
-                )}
-              </button>
-              <div onClick={seekTo} style={{
-                flex: 1, height: 20, borderRadius: 3,
-                background: "#080a10", cursor: "pointer", position: "relative",
-                overflow: "hidden",
-              }}>
+              {/* Audio playback — only in no-video mode */}
+              {result.audioBlob && (
                 <div style={{
-                  position: "absolute", left: 0, top: 0, bottom: 0,
-                  width: `${progress * 100}%`,
-                  background: "linear-gradient(90deg, #e02020, #ff4444)",
-                  borderRadius: 3,
-                  transition: playing ? "width 0.05s linear" : "width 0.15s ease-out",
-                }} />
-                <div style={{
-                  position: "absolute", top: 0, bottom: 0,
-                  left: `${progress * 100}%`, width: 2,
-                  background: "#fff", borderRadius: 1,
-                  boxShadow: "0 0 4px rgba(255,255,255,0.3)",
-                  transition: playing ? "left 0.05s linear" : "left 0.15s ease-out",
-                }} />
-              </div>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#666", flexShrink: 0 }}>
-                {fmtTime(progress * audioDur)}
-              </div>
-            </div>
-          )}
-
-          {/* Submit to leaderboard — inside screen */}
-          {supabase && !uploaded && (
-            <div style={{
-              background: hasVideo ? "rgba(10,12,20,0.8)" : "#0a0c14", borderRadius: 5, padding: "6px 8px", marginTop: 4,
-              border: `1px solid ${hasVideo ? "rgba(20,22,31,0.6)" : "#14161f"}`,
-              position: "relative", zIndex: 10, flexShrink: 0,
-            }}>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, letterSpacing: 2, color: "#555", marginBottom: 6 }}>SUBMIT TO LEADERBOARD</div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <input
-                  type="text"
-                  placeholder="your name"
-                  value={playerName}
-                  onChange={e => setPlayerName(e.target.value.slice(0, 24))}
-                  maxLength={24}
-                  className="name-input"
-                  style={{
-                    flex: 1, padding: "8px 10px", borderRadius: 5,
-                    background: "#080a10", border: "1px solid #1a1c28",
-                    color: "#e8e4e0", fontFamily: "'DM Sans'", fontSize: 13,
-                    outline: "none",
-                    transition: "border-color 0.3s ease, box-shadow 0.3s ease",
-                  }}
-                />
-                <button
-                  disabled={uploading}
-                  className="submit-btn"
-                  onClick={async () => {
-                    setUploading(true); setUploadError(null);
-                    const res = await uploadScream({
-                      score: result.score,
-                      peakDb: result.peakDb,
-                      rank: result.rank,
-                      duration: result.duration,
-                      chartData: result.chartData,
-                      audioBlob: result.audioBlob,
-                      playerName: playerName.trim() || "anonymous",
-                    });
-                    setUploading(false);
-                    if (res) { haptic("success"); setUploaded(true); } else { haptic("error"); setUploadError("failed — try again"); }
-                  }}
-                  style={{
-                    padding: "8px 14px", borderRadius: 5,
-                    background: uploading ? "#333" : "#e02020",
-                    border: "none", color: "#f0ece8", cursor: uploading ? "default" : "pointer",
-                    fontFamily: "'JetBrains Mono'", fontSize: 11, fontWeight: 400, letterSpacing: 1,
-                    whiteSpace: "nowrap",
-                    transition: "transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, box-shadow 0.3s ease",
-                  }}
-                >{uploading ? "..." : "SUBMIT"}</button>
-              </div>
-              {uploadError && <div style={{ fontFamily: "'DM Sans'", fontSize: 12, color: "#ef4444", marginTop: 6 }}>{uploadError}</div>}
-            </div>
-          )}
-          {supabase && uploaded && (
-            <div style={{
-              background: "#22cc6612", border: "1px solid #22cc6625",
-              borderRadius: 6, padding: "8px 10px", marginTop: 8,
-              textAlign: "center", position: "relative", zIndex: 10,
-            }}>
-              <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 10, color: "#22cc66", letterSpacing: 1 }}>SUBMITTED TO LEADERBOARD</div>
+                  display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexShrink: 0,
+                  background: "#0a0c14", borderRadius: 5, padding: "5px 8px",
+                  border: "1px solid #14161f",
+                }}>
+                  <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="audio-play-btn" style={{
+                    width: 32, height: 32, borderRadius: "50%",
+                    background: playing ? "#e02020" : "#1a1c28",
+                    border: `1px solid ${playing ? "#e02020" : "#22242e"}`,
+                    color: "#f0ece8", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 10, flexShrink: 0,
+                    boxShadow: playing ? "0 0 8px #e0202033" : "none",
+                    transition: "background 0.2s ease, border-color 0.2s ease, box-shadow 0.3s ease",
+                  }}>
+                    {playing ? (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><rect x="1" y="1" width="3" height="8" rx="0.5" /><rect x="6" y="1" width="3" height="8" rx="0.5" /></svg>
+                    ) : (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4V1z" /></svg>
+                    )}
+                  </button>
+                  <div onClick={(e) => { e.stopPropagation(); seekTo(e); }} style={{
+                    flex: 1, height: 20, borderRadius: 3,
+                    background: "#080a10", cursor: "pointer", position: "relative",
+                    overflow: "hidden",
+                  }}>
+                    <div style={{
+                      position: "absolute", left: 0, top: 0, bottom: 0,
+                      width: `${progress * 100}%`,
+                      background: "linear-gradient(90deg, #e02020, #ff4444)",
+                      borderRadius: 3,
+                      transition: playing ? "width 0.05s linear" : "width 0.15s ease-out",
+                    }} />
+                    <div style={{
+                      position: "absolute", top: 0, bottom: 0,
+                      left: `${progress * 100}%`, width: 2,
+                      background: "#fff", borderRadius: 1,
+                      boxShadow: "0 0 4px rgba(255,255,255,0.3)",
+                      transition: playing ? "left 0.05s linear" : "left 0.15s ease-out",
+                    }} />
+                  </div>
+                  <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 9, color: "#666", flexShrink: 0 }}>
+                    {fmtTime(progress * audioDur)}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DeviceFrame>
